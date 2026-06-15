@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
-import { fetchFeatured, fetchTrending, fetchCategories } from "@/lib/api";
+import { fetchFeatured, fetchTrending, fetchCategories, searchAssets } from "@/lib/api";
 import type { MarketplaceItem, Category } from "@/lib/api";
 
 const fallbackFeatured: MarketplaceItem[] = [
@@ -58,6 +58,16 @@ export default function MarketplacePage() {
   const [trendingItems, setTrendingItems] = useState<MarketplaceItem[]>(fallbackTrending);
   const [categories, setCategories] = useState<({ label: string; icon: string; active: boolean })[]>(fallbackCategories);
   const [activeCategory, setActiveCategory] = useState("Agents");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    if (value.length > 2) {
+      searchAssets(value).then((res) => setTrendingItems(res.items)).catch(console.error);
+    } else if (value.length === 0) {
+      fetchTrending().then(setTrendingItems).catch(console.error);
+    }
+  };
 
   useEffect(() => {
     fetchFeatured().then(setFeaturedItems).catch(console.error);
@@ -95,6 +105,8 @@ export default function MarketplacePage() {
                 className="w-full bg-[#0A0E1A] border border-outline-variant/30 rounded-xl py-lg pl-xl pr-md text-body-lg font-body-lg focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                 placeholder="Search for intelligent agents, prompts, or data..."
                 type="text"
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
             <div className="flex flex-wrap gap-sm">
