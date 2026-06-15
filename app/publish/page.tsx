@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GlassCard from "@/components/agentverse/GlassCard";
 import Footer from "@/components/agentverse/Footer";
+import { fetchAssetTypes, createAsset } from "@/lib/api";
+import type { AssetType } from "@/lib/api";
 
-const assetTypes = [
+const fallbackTypes: AssetType[] = [
   {
     id: "agent",
     icon: "smart_toy",
@@ -45,6 +47,11 @@ const assetTypes = [
 
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [assetTypes, setAssetTypes] = useState<AssetType[]>(fallbackTypes);
+
+  useEffect(() => {
+    fetchAssetTypes().then(setAssetTypes).catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20">
