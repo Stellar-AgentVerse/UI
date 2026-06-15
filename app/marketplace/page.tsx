@@ -1,10 +1,13 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
+import { fetchFeatured } from "@/lib/api";
+import type { MarketplaceItem } from "@/lib/api";
 
-const featuredItems = [
+const fallbackFeatured: MarketplaceItem[] = [
   {
     title: "Nova-7 Strategist",
     category: "Featured Agent",
@@ -87,6 +90,12 @@ const categories = [
 ];
 
 export default function MarketplacePage() {
+  const [featuredItems, setFeaturedItems] = useState<MarketplaceItem[]>(fallbackFeatured);
+
+  useEffect(() => {
+    fetchFeatured().then(setFeaturedItems).catch(console.error);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#050816] overflow-x-hidden">
       <NavBar
