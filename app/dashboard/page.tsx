@@ -1,8 +1,11 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
+import { fetchDashboardMetrics, fetchTopAssets, fetchActivityLogs } from "@/lib/api";
+import type { DashboardMetrics, TopAsset, ActivityLogItem } from "@/lib/api";
 
 const revenueData = [
   { day: "Mon", value: 40 },
@@ -66,7 +69,12 @@ const systemLogs = [
 ];
 
 export default function CreatorDashboard() {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const maxRevenue = Math.max(...revenueData.map((d) => d.value));
+
+  useEffect(() => {
+    fetchDashboardMetrics().then(setMetrics).catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#050816] overflow-x-hidden">
@@ -108,7 +116,7 @@ export default function CreatorDashboard() {
             </div>
             <div className="flex items-baseline gap-xs">
               <span className="font-headline-md text-headline-md text-primary">
-                42,890
+                {metrics ? metrics.totalRevenue.toLocaleString() : "—"}
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 XLM
@@ -119,7 +127,7 @@ export default function CreatorDashboard() {
                 trending_up
               </span>
               <span className="font-label-sm text-label-sm">
-                +12.4% vs last month
+                {metrics ? `+${metrics.revenueTrend}% vs last month` : "—"}
               </span>
             </div>
             <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
@@ -139,11 +147,11 @@ export default function CreatorDashboard() {
               </span>
             </div>
             <div className="font-headline-md text-headline-md text-primary">
-              24
+              {metrics ? metrics.assetsPublished : "—"}
             </div>
             <div className="mt-xs text-on-surface-variant flex items-center gap-xs">
               <span className="font-label-sm text-label-sm">
-                3 Pending Verification
+                {metrics ? `${metrics.pendingVerification} Pending Verification` : "—"}
               </span>
             </div>
           </GlassCard>
@@ -158,12 +166,12 @@ export default function CreatorDashboard() {
               </span>
             </div>
             <div className="font-headline-md text-headline-md text-primary">
-              1.2M
+              {metrics ? metrics.totalExecutions.toLocaleString() : "—"}
             </div>
             <div className="mt-xs text-secondary flex items-center gap-xs">
               <span className="material-symbols-outlined text-sm">bolt</span>
               <span className="font-label-sm text-label-sm">
-                High Reliability (99.9%)
+                {metrics ? `High Reliability (${metrics.reliability}%)` : "—"}
               </span>
             </div>
           </GlassCard>
