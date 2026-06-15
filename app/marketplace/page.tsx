@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
-import { fetchFeatured } from "@/lib/api";
+import { fetchFeatured, fetchTrending } from "@/lib/api";
 import type { MarketplaceItem } from "@/lib/api";
 
 const fallbackFeatured: MarketplaceItem[] = [
@@ -37,49 +37,13 @@ const fallbackFeatured: MarketplaceItem[] = [
   },
 ];
 
-const trendingItems = [
-  {
-    title: "CodeArchitect v2",
-    creator: "DevMaster",
-    rating: "4.8",
-    price: "320 CR",
-    tag: "AGENT",
-  },
-  {
-    title: "LegalScryer Data",
-    creator: "JurisData",
-    rating: "4.9",
-    price: "1,800 CR",
-    tag: "DATASET",
-  },
-  {
-    title: "Visionary Prompt",
-    creator: "PixelMind",
-    rating: "4.7",
-    price: "85 CR",
-    tag: "PROMPT",
-  },
-  {
-    title: "Salesforce Automata",
-    creator: "OmniZense",
-    rating: "4.6",
-    price: "560 CR",
-    tag: "WORKFLOW",
-  },
-  {
-    title: "MarketPulse AI",
-    creator: "FinTech.ai",
-    rating: "4.7",
-    price: "30 CR",
-    tag: "AGENT",
-  },
-  {
-    title: "OmniVision Agent",
-    creator: "Visionary",
-    rating: "4.9",
-    price: "45 CR",
-    tag: "AGENT",
-  },
+const fallbackTrending: MarketplaceItem[] = [
+  { title: "CodeArchitect v2", creator: "DevMaster", rating: "4.8", price: "320 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 320, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
+  { title: "LegalScryer Data", creator: "JurisData", rating: "4.9", price: "1,800 CR", tag: "DATASET", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 1800, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
+  { title: "Visionary Prompt", creator: "PixelMind", rating: "4.7", price: "85 CR", tag: "PROMPT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 85, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
+  { title: "Salesforce Automata", creator: "OmniZense", rating: "4.6", price: "560 CR", tag: "WORKFLOW", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 560, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
+  { title: "MarketPulse AI", creator: "FinTech.ai", rating: "4.7", price: "30 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 30, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
+  { title: "OmniVision Agent", creator: "Visionary", rating: "4.9", price: "45 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 45, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
 ];
 
 const categories = [
@@ -91,9 +55,11 @@ const categories = [
 
 export default function MarketplacePage() {
   const [featuredItems, setFeaturedItems] = useState<MarketplaceItem[]>(fallbackFeatured);
+  const [trendingItems, setTrendingItems] = useState<MarketplaceItem[]>(fallbackTrending);
 
   useEffect(() => {
     fetchFeatured().then(setFeaturedItems).catch(console.error);
+    fetchTrending().then(setTrendingItems).catch(console.error);
   }, []);
 
   return (
