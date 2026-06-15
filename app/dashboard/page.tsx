@@ -23,41 +23,22 @@ const fallbackTopAssets: TopAsset[] = [
   { name: "MetaScout-X", category: "Search", revenue: "5.1k XLM", calls: "920 calls", gradient: "from-accent/10 to-transparent", assetId: "" },
 ];
 
-const systemLogs = [
-  {
-    event: "Execution Success",
-    asset: "CYBERORACLE-V2",
-    status: "Active",
-    statusClass: "text-secondary bg-secondary/10",
-    revenue: "+0.25 XLM",
-    time: "2 mins ago",
-  },
-  {
-    event: "New Subscription",
-    asset: "QUANTNEXUS",
-    status: "Active",
-    statusClass: "text-secondary bg-secondary/10",
-    revenue: "+500.00 XLM",
-    time: "14 mins ago",
-  },
-  {
-    event: "API Heartbeat",
-    asset: "METASCOUT-X",
-    status: "Idle",
-    statusClass: "text-on-surface-variant bg-surface-variant",
-    revenue: "--",
-    time: "1 hr ago",
-  },
+const fallbackLogs: ActivityLogItem[] = [
+  { event: "Execution Success", asset: "CYBERORACLE-V2", status: "Active", statusClass: "text-secondary bg-secondary/10", revenue: "+0.25 XLM", time: "2 mins ago" },
+  { event: "New Subscription", asset: "QUANTNEXUS", status: "Active", statusClass: "text-secondary bg-secondary/10", revenue: "+500.00 XLM", time: "14 mins ago" },
+  { event: "API Heartbeat", asset: "METASCOUT-X", status: "Idle", statusClass: "text-on-surface-variant bg-surface-variant", revenue: "--", time: "1 hr ago" },
 ];
 
 export default function CreatorDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [topAssets, setTopAssets] = useState<TopAsset[]>(fallbackTopAssets);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>(fallbackLogs);
   const maxRevenue = Math.max(...revenueData.map((d) => d.value));
 
   useEffect(() => {
     fetchDashboardMetrics().then(setMetrics).catch(console.error);
     fetchTopAssets().then(setTopAssets).catch(console.error);
+    fetchActivityLogs().then(setActivityLogs).catch(console.error);
   }, []);
 
   return (
@@ -296,7 +277,7 @@ export default function CreatorDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
-                {systemLogs.map((log) => (
+                {activityLogs.map((log) => (
                   <tr
                     key={log.event + log.asset}
                     className="hover:bg-surface-container-low/50 transition-colors cursor-pointer"
