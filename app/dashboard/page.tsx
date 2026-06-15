@@ -17,28 +17,10 @@ const revenueData = [
   { day: "Sun", value: 60 },
 ];
 
-const topAssets = [
-  {
-    name: "CyberOracle-v2",
-    category: "Prediction",
-    revenue: "12.5k XLM",
-    calls: "4.8k calls",
-    gradient: "from-secondary/20 to-transparent",
-  },
-  {
-    name: "QuantNexus",
-    category: "Finance",
-    revenue: "8.2k XLM",
-    calls: "1.2k calls",
-    gradient: "from-primary/10 to-transparent",
-  },
-  {
-    name: "MetaScout-X",
-    category: "Search",
-    revenue: "5.1k XLM",
-    calls: "920 calls",
-    gradient: "from-accent/10 to-transparent",
-  },
+const fallbackTopAssets: TopAsset[] = [
+  { name: "CyberOracle-v2", category: "Prediction", revenue: "12.5k XLM", calls: "4.8k calls", gradient: "from-secondary/20 to-transparent", assetId: "" },
+  { name: "QuantNexus", category: "Finance", revenue: "8.2k XLM", calls: "1.2k calls", gradient: "from-primary/10 to-transparent", assetId: "" },
+  { name: "MetaScout-X", category: "Search", revenue: "5.1k XLM", calls: "920 calls", gradient: "from-accent/10 to-transparent", assetId: "" },
 ];
 
 const systemLogs = [
@@ -70,10 +52,12 @@ const systemLogs = [
 
 export default function CreatorDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [topAssets, setTopAssets] = useState<TopAsset[]>(fallbackTopAssets);
   const maxRevenue = Math.max(...revenueData.map((d) => d.value));
 
   useEffect(() => {
     fetchDashboardMetrics().then(setMetrics).catch(console.error);
+    fetchTopAssets().then(setTopAssets).catch(console.error);
   }, []);
 
   return (
