@@ -183,20 +183,10 @@ export default function AssetDetails() {
             <div className="h-px flex-grow mx-lg bg-outline-variant/30" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-            {[
-              {
-                icon: "search_insights",
-                title: "Deep Research",
-                description:
-                  "Autonomous multi-source extraction across global financial indices, scientific journals, and social sentiment feeds with real-time verification layers.",
-              },
-              {
-                icon: "model_training",
-                title: "Semantic Synthesis",
-                description:
-                  "Advanced LLM-driven logic to connect disparate data points into cohesive strategic reports with executable insights and probability mapping.",
-              },
-            ].map((cap) => (
+            {(asset?.capabilities?.length
+              ? asset.capabilities
+              : ([] as { icon: string; title: string; description: string; sortOrder: number }[])
+            ).map((cap) => (
               <GlassCard
                 key={cap.title}
                 className="p-lg group hover:bg-primary/5 transition-all"
