@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
-import { fetchFeatured, fetchTrending } from "@/lib/api";
-import type { MarketplaceItem } from "@/lib/api";
+import { fetchFeatured, fetchTrending, fetchCategories } from "@/lib/api";
+import type { MarketplaceItem, Category } from "@/lib/api";
 
 const fallbackFeatured: MarketplaceItem[] = [
   {
@@ -46,7 +46,7 @@ const fallbackTrending: MarketplaceItem[] = [
   { title: "OmniVision Agent", creator: "Visionary", rating: "4.9", price: "45 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 45, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
 ];
 
-const categories = [
+const fallbackCategories = [
   { label: "Agents", icon: "smart_toy", active: true },
   { label: "Prompts", icon: "terminal", active: false },
   { label: "Datasets", icon: "database", active: false },
@@ -56,11 +56,20 @@ const categories = [
 export default function MarketplacePage() {
   const [featuredItems, setFeaturedItems] = useState<MarketplaceItem[]>(fallbackFeatured);
   const [trendingItems, setTrendingItems] = useState<MarketplaceItem[]>(fallbackTrending);
+  const [categories, setCategories] = useState<({ label: string; icon: string; active: boolean })[]>(fallbackCategories);
+  const [activeCategory, setActiveCategory] = useState("Agents");
 
   useEffect(() => {
     fetchFeatured().then(setFeaturedItems).catch(console.error);
     fetchTrending().then(setTrendingItems).catch(console.error);
+    fetchCategories().then((apiCats) => {
+      setCategories(apiCats.map((c) => ({ label: c.label, icon: c.icon, active: c.label === activeCategory })));
+    }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    setCategories((prev) => prev.map((c) => ({ ...c, active: c.label === activeCategory })));
+  }, [activeCategory]);
 
   return (
     <div className="min-h-screen bg-[#050816] overflow-x-hidden">
@@ -92,6 +101,7 @@ export default function MarketplacePage() {
               {categories.map((cat) => (
                 <button
                   key={cat.label}
+                  onClick={() => setActiveCategory(cat.label)}
                   className={`px-md py-sm rounded-full border font-label-sm text-label-sm flex items-center gap-xs transition-all ${
                     cat.active
                       ? "border-accent bg-accent/10 text-accent"
