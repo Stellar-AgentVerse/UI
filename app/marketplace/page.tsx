@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
@@ -9,31 +9,55 @@ import type { MarketplaceItem, Category } from "@/lib/api";
 
 const fallbackFeatured: MarketplaceItem[] = [
   {
+    id: "featured-1",
     title: "Nova-7 Strategist",
+    slug: "nova-7-strategist",
     category: "Featured Agent",
     creator: "NeuralLabs",
+    creatorPublicKey: "GAAA…",
     rating: "4.9",
     price: "25 Credits",
-    gradient: "from-accent/10 to-transparent",
+    priceValue: 25,
+    currency: "CR",
     tag: "AGENT",
+    gradient: "from-accent/10 to-transparent",
+    description: "AI strategy agent for market analysis.",
+    imageUrl: "",
+    executions: 1420,
   },
   {
+    id: "featured-2",
     title: "CryptoPulse Flow",
+    slug: "cryptopulse-flow",
     category: "Top Workflow",
     creator: "QuantCore",
+    creatorPublicKey: "GBBB…",
     rating: "4.7",
     price: "50 Credits",
-    gradient: "from-accent/10 to-transparent",
+    priceValue: 50,
+    currency: "CR",
     tag: "WORKFLOW",
+    gradient: "from-accent/10 to-transparent",
+    description: "Automated crypto trading workflow.",
+    imageUrl: "",
+    executions: 980,
   },
   {
+    id: "featured-3",
     title: "EcoTrend Ledger",
+    slug: "ecotrend-ledger",
     category: "New Dataset",
     creator: "GaiaSystems",
+    creatorPublicKey: "GCCC…",
     rating: "5.0",
     price: "12 Credits",
-    gradient: "from-accent/10 to-transparent",
+    priceValue: 12,
+    currency: "CR",
     tag: "DATASET",
+    gradient: "from-accent/10 to-transparent",
+    description: "Environmental trend dataset.",
+    imageUrl: "",
+    executions: 2340,
   },
 ];
 
@@ -46,17 +70,17 @@ const fallbackTrending: MarketplaceItem[] = [
   { title: "OmniVision Agent", creator: "Visionary", rating: "4.9", price: "45 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 45, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
 ];
 
-const fallbackCategories = [
-  { label: "Agents", icon: "smart_toy", active: true },
-  { label: "Prompts", icon: "terminal", active: false },
-  { label: "Datasets", icon: "database", active: false },
-  { label: "Workflows", icon: "account_tree", active: false },
+const categoryDefs: { label: string; icon: string }[] = [
+  { label: "Agents", icon: "smart_toy" },
+  { label: "Prompts", icon: "terminal" },
+  { label: "Datasets", icon: "database" },
+  { label: "Workflows", icon: "account_tree" },
 ];
 
 export default function MarketplacePage() {
   const [featuredItems, setFeaturedItems] = useState<MarketplaceItem[]>(fallbackFeatured);
   const [trendingItems, setTrendingItems] = useState<MarketplaceItem[]>(fallbackTrending);
-  const [categories, setCategories] = useState<({ label: string; icon: string; active: boolean })[]>(fallbackCategories);
+  const [apiCategories, setApiCategories] = useState<{ label: string; icon: string }[]>(categoryDefs);
   const [activeCategory, setActiveCategory] = useState("Agents");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -69,17 +93,18 @@ export default function MarketplacePage() {
     }
   };
 
+  const categories = useMemo(
+    () => apiCategories.map((c) => ({ ...c, active: c.label === activeCategory })),
+    [apiCategories, activeCategory],
+  );
+
   useEffect(() => {
     fetchFeatured().then(setFeaturedItems).catch(console.error);
     fetchTrending().then(setTrendingItems).catch(console.error);
     fetchCategories().then((apiCats) => {
-      setCategories(apiCats.map((c) => ({ label: c.label, icon: c.icon, active: c.label === activeCategory })));
+      setApiCategories(apiCats.map((c) => ({ label: c.label, icon: c.icon })));
     }).catch(console.error);
   }, []);
-
-  useEffect(() => {
-    setCategories((prev) => prev.map((c) => ({ ...c, active: c.label === activeCategory })));
-  }, [activeCategory]);
 
   return (
     <div className="min-h-screen bg-[#050816] overflow-x-hidden">

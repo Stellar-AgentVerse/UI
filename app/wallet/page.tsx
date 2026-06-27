@@ -210,7 +210,7 @@ export default function WalletPage() {
                       {pkg.description}
                     </p>
                     <div className="space-y-sm mb-xl">
-                      {pkg.features.map((f) => (
+                      {(pkg.features ?? []).map((f) => (
                         <div key={f} className="flex items-center gap-sm">
                           <span className="material-symbols-outlined text-primary text-[18px]">
                             check_circle
