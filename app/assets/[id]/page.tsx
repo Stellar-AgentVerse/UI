@@ -1,12 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
+import NavBar from "@/components/agentverse/NavBar";
 import { fetchAsset } from "@/lib/api";
 import type { AssetDetail } from "@/lib/api";
+
+function MetricTile({ label, value, icon }: { label: string; value: string; icon: string }) {
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">{label}</div>
+          <div className="mt-3 text-2xl font-semibold text-primary">{value}</div>
+        </div>
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-outline-variant/20 bg-white/5 text-accent">
+          <span className="material-symbols-outlined text-[22px]">{icon}</span>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
 
 export default function AssetDetails() {
   const params = useParams();
@@ -16,294 +32,217 @@ export default function AssetDetails() {
     const id = params?.id as string;
     if (id) fetchAsset(id).then(setAsset).catch(console.error);
   }, [params?.id]);
+
+  const metrics = useMemo(() => asset?.metrics, [asset]);
+  const workflow = asset?.workflow ?? [];
+  const specs = asset?.specs ?? [];
+  const capabilities = asset?.capabilities ?? [];
+
   return (
-    <div className="min-h-screen bg-[#050816] overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden">
       <NavBar
         links={[
-          { label: "Agents", href: "#", active: true },
-          { label: "Prompts", href: "#" },
-          { label: "Datasets", href: "#" },
-          { label: "Workflows", href: "#" },
-          { label: "Developers", href: "#" },
+          { label: "Marketplace", href: "/marketplace" },
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Wallet", href: "/wallet" },
         ]}
         rightContent={
-          <div className="flex items-center gap-sm">
-            <button className="px-md py-xs text-on-surface-variant font-body-md hover:text-primary transition-colors">
-              Connect Wallet
+          <div className="flex items-center gap-3">
+            <button className="focus-ring rounded-full border border-outline-variant/25 px-4 py-2 text-sm text-on-surface-variant transition-colors hover:text-primary">
+              Connect wallet
             </button>
-            <button className="bg-primary text-background px-md py-xs rounded-lg font-body-md font-semibold active:scale-95 transition-transform">
+            <button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
               Launch App
             </button>
           </div>
         }
       />
 
-      {/* Background glows */}
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-container/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute right-[-8%] top-[-8%] h-[28rem] w-[28rem] rounded-full bg-accent/8 blur-[120px]" />
+        <div className="absolute left-[-8%] bottom-[-10%] h-[24rem] w-[24rem] rounded-full bg-secondary/10 blur-[120px]" />
+      </div>
 
-      <main className="max-w-container-max mx-auto px-lg py-xl">
-        {/* Hero Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-xl mb-xl">
-          {/* Left: Hero Image & Identity */}
-          <div className="lg:col-span-7 space-y-lg">
-            <div className="relative group aspect-video overflow-hidden rounded-xl glass-card">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="relative w-48 h-48 md:w-64 md:h-64">
-                  <div className="absolute inset-0 border border-outline-variant/30 rounded-full animate-spin" style={{ animationDuration: "20s" }} />
-                  <div className="absolute inset-4 border border-outline-variant/10 rounded-full animate-spin" style={{ animationDuration: "30s", animationDirection: "reverse" }} />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-40 h-40 md:w-48 md:h-48 glass-card rounded-full flex items-center justify-center border border-primary/20">
-                      <span className="material-symbols-outlined text-7xl md:text-8xl text-primary">
-                        psychology
-                      </span>
-                    </div>
-                  </div>
+      <main className="page-shell pt-28 pb-24">
+        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <GlassCard className="relative overflow-hidden p-0">
+            <div className="relative min-h-[32rem] overflow-hidden rounded-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(95,251,241,0.16),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]" />
+              <div className="absolute inset-0 opacity-80">
+                <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant/20" />
+                <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant/10" />
+                <div className="absolute left-1/2 top-1/2 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/20 bg-background/60 backdrop-blur-md">
+                  <span className="material-symbols-outlined text-7xl text-primary">psychology</span>
                 </div>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-              <div className="absolute bottom-md left-md">
-                  <span className="inline-flex items-center gap-xs px-sm py-1 bg-primary/10 border border-primary/20 backdrop-blur-md rounded-full text-primary font-label-sm text-label-sm mb-sm">
-                    <span className="material-symbols-outlined text-[14px]">
-                      auto_awesome
-                    </span>
-                    {asset?.type ?? "—"}
-                  </span>
-                  <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">
-                    {asset?.name ?? "—"}
-                  </h1>
-                  <p className="text-on-surface-variant max-w-lg">
-                    {asset?.description ?? "—"}
-                  </p>
-              </div>
-            </div>
 
-            {/* Pricing + Execute */}
-            <div className="flex items-center justify-between p-lg glass-card rounded-xl">
-              <div className="flex flex-col">
-                <span className="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-widest">
-                  Access Price
-                </span>
-                  <div className="flex items-baseline gap-xs">
-                    <span className="font-headline-md text-headline-md text-primary">
-                      {asset?.price ?? "—"}
-                    </span>
-                    <span className="text-on-surface-variant font-body-md">
-                      Credits / Run
-                    </span>
-                  </div>
-              </div>
-              <button className="bg-primary text-background px-xl py-md rounded-xl font-body-lg font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  play_arrow
-                </span>
-                Execute Agent
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Metrics + Creator */}
-          <div className="lg:col-span-5 space-y-md">
-            <div className="grid grid-cols-2 gap-md">
-                {(() => {
-                  const m = asset?.metrics;
-                  const items = [
-                    { label: "Executions", value: m ? `${(m.executions / 1000).toFixed(1)}k+` : "—", icon: "bolt" },
-                    { label: "Revenue (XLM)", value: m ? `${(m.revenue / 1000).toFixed(1)}k` : "—", icon: "payments" },
-                    { label: "Active Users", value: m ? String(m.activeUsers) : "—", icon: "group" },
-                    { label: "Rating", value: m ? m.rating.toFixed(2) : "—", icon: "star", filled: true },
-                  ];
-                  return items.map((metric) => (
-                <GlassCard
-                  key={metric.label}
-                  className="p-md flex flex-col justify-between h-32 group"
-                >
-                  <span className="text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between">
-                    {metric.label}
-                    <span className="material-symbols-outlined text-primary/50 group-hover:text-primary transition-colors">
-                      {metric.icon}
-                    </span>
-                  </span>
-                  <span className="font-headline-md text-headline-md text-primary">
-                    {metric.value}
-                  </span>
-                </GlassCard>
-              ));
-            })()}
-            </div>
-
-            {/* Creator Card */}
-            <GlassCard className="p-lg space-y-md">
-              <div className="flex items-center justify-between">
-                <h3 className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
-                  Architect
-                </h3>
-                <span className="px-xs py-1 bg-surface-container-high rounded text-[10px] font-label-sm">
-                  VERIFIED
-                </span>
-              </div>
-              <div className="flex items-center gap-md">
-                <div className="w-16 h-16 rounded-full border-2 border-primary/20 p-1">
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-secondary/20 to-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-2xl">
-                      person
-                    </span>
-                  </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent p-6 md:p-8">
+                <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">
+                  <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                  {asset?.type ?? "Loading"}
                 </div>
+                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-primary md:text-6xl">{asset?.name ?? "—"}</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-variant md:text-base">
+                  {asset?.description ?? "—"}
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {(asset?.tags ?? []).map((tag) => (
+                    <span key={tag} className="rounded-full border border-outline-variant/20 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-on-surface-variant">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          <div className="space-y-4">
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="font-body-lg font-bold text-primary">
-                    Etherion Systems
-                  </div>
-                  <div className="text-on-surface-variant font-label-sm text-label-sm">
-                    @etherion_hq
-                  </div>
+                  <p className="section-kicker mb-2">Access</p>
+                  <h2 className="section-title text-2xl">Pricing and execution</h2>
                 </div>
+                <span className="material-symbols-outlined text-accent">payments</span>
               </div>
-              <p className="text-on-surface-variant text-sm">
-                Specializing in high-frequency data synthesis and autonomous
-                reasoning models for the Aetheric network.
+
+              <div className="mt-6 flex items-end gap-3">
+                <div className="text-5xl font-semibold text-primary">{asset?.price ?? "—"}</div>
+                <div className="pb-1 text-sm text-on-surface-variant">credits / run</div>
+              </div>
+
+              <button className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
+                <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+                Execute asset
+              </button>
+            </GlassCard>
+
+            <div className="grid grid-cols-2 gap-4">
+              <MetricTile label="Executions" value={metrics ? metrics.executions.toLocaleString() : "—"} icon="bolt" />
+              <MetricTile label="Revenue" value={metrics ? `${metrics.revenue.toLocaleString()} XLM` : "—"} icon="payments" />
+              <MetricTile label="Active users" value={metrics ? metrics.activeUsers.toLocaleString() : "—"} icon="group" />
+              <MetricTile label="Rating" value={metrics ? metrics.rating.toFixed(2) : "—"} icon="star" />
+            </div>
+
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="section-kicker mb-2">Architect</p>
+                  <h2 className="section-title text-2xl">Etherion Systems</h2>
+                </div>
+                <span className="rounded-full border border-outline-variant/20 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Verified
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
+                Specializing in high-frequency data synthesis and autonomous reasoning models for the Aetheric network.
               </p>
-              <button className="w-full py-sm border border-outline text-primary rounded-lg font-body-md font-semibold hover:bg-primary/5 transition-all">
-                Follow Architect
+              <button className="focus-ring mt-6 rounded-full border border-outline-variant/25 px-4 py-3 text-sm font-semibold text-primary transition-all hover:border-accent/30 hover:bg-accent/10">
+                Follow architect
               </button>
             </GlassCard>
           </div>
         </section>
 
-        {/* Capabilities Section */}
-        <section className="mb-xl">
-          <div className="flex items-center justify-between mb-lg">
-            <h2 className="font-headline-md text-headline-md text-primary">
-              Agent Capabilities
-            </h2>
-            <div className="h-px flex-grow mx-lg bg-outline-variant/30" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-            {(asset?.capabilities?.length
-              ? asset.capabilities
-              : ([] as { icon: string; title: string; description: string; sortOrder: number }[])
-            ).map((cap) => (
-              <GlassCard
-                key={cap.title}
-                className="p-lg group hover:bg-primary/5 transition-all"
-              >
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-md group-hover:bg-primary group-hover:text-background transition-colors">
-                  <span className="material-symbols-outlined">{cap.icon}</span>
-                </div>
-                <h3 className="font-body-lg font-bold text-primary mb-sm">
-                  {cap.title}
-                </h3>
-                <p className="text-on-surface-variant">{cap.description}</p>
-              </GlassCard>
-            ))}
-          </div>
-        </section>
-
-        {/* Workflow */}
-        <section className="mb-xl p-xl glass-card rounded-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <h3 className="font-headline-md text-headline-md text-primary mb-xl text-center">
-              Typical Logic Flow
-            </h3>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-lg max-w-4xl mx-auto">
-              {(asset?.workflow?.length ? asset.workflow : []).map((step, i) => (
-                <React.Fragment key={step.label}>
-                  <div
-                    className="flex flex-col items-center gap-sm"
-                  >
-                    <div
-                      className={`w-16 h-16 rounded-full border flex items-center justify-center ${
-                        step.isFilled
-                          ? "bg-primary border-primary"
-                          : step.isActive
-                            ? "border-primary bg-background"
-                            : "border-primary/30 glass-card"
-                      }`}
-                    >
-                      <span
-                        className={`material-symbols-outlined ${step.isFilled ? "text-background" : "text-primary"}`}
-                      >
-                        {step.icon}
-                      </span>
-                    </div>
-                    <span className="font-label-sm text-label-sm uppercase text-on-surface-variant">
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < (asset?.workflow?.length ?? 0) - 1 && (
-                    <div className="hidden md:block flex-grow h-px bg-outline-variant/30 relative">
-                      <div className="absolute -top-1 left-1/2 w-2 h-2 bg-primary rounded-full" />
-                    </div>
-                  )}
-                </React.Fragment>
-              ))}
+        <section className="mt-10 grid gap-4 lg:grid-cols-2">
+          <GlassCard className="p-6">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="section-kicker mb-2">Capabilities</p>
+                <h2 className="section-title text-2xl md:text-3xl">What it does</h2>
+              </div>
+              <span className="text-sm text-on-surface-variant">{capabilities.length} capabilities</span>
             </div>
-          </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {capabilities.length
+                ? capabilities.map((cap) => (
+                    <div key={cap.title} className="rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                        <span className="material-symbols-outlined">{cap.icon}</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-primary">{cap.title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{cap.description}</p>
+                    </div>
+                  ))
+                : <p className="text-sm text-on-surface-variant">No capabilities available yet.</p>}
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="section-kicker mb-2">Workflow</p>
+                <h2 className="section-title text-2xl md:text-3xl">Typical logic flow</h2>
+              </div>
+              <span className="text-sm text-on-surface-variant">{workflow.length} steps</span>
+            </div>
+            <div className="space-y-4">
+              {workflow.length
+                ? workflow.map((step, index) => (
+                    <div key={step.label} className="flex items-center gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${step.isFilled ? "border-accent/30 bg-accent text-on-primary" : step.isActive ? "border-accent/30 bg-accent/10 text-accent" : "border-outline-variant/20 bg-white/5 text-on-surface-variant"}`}>
+                        <span className="material-symbols-outlined text-[20px]">{step.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-primary">{step.label}</div>
+                        <div className="text-sm text-on-surface-variant">Step {index + 1}</div>
+                      </div>
+                    </div>
+                  ))
+                : <p className="text-sm text-on-surface-variant">Workflow not available yet.</p>}
+            </div>
+          </GlassCard>
         </section>
 
-        {/* Technical Specs */}
-        <section>
-          <h3 className="font-headline-md text-headline-md text-primary mb-lg">
-            Technical Specifications
-          </h3>
-          <div className="overflow-hidden border border-outline-variant/30 rounded-xl">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-surface-container">
-                <tr>
-                  <th className="p-md text-on-surface-variant font-label-sm text-label-sm uppercase">
-                    Parameter
-                  </th>
-                  <th className="p-md text-on-surface-variant font-label-sm text-label-sm uppercase">
-                    Value
-                  </th>
-                  <th className="p-md text-on-surface-variant font-label-sm text-label-sm uppercase">
-                    Notes
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/20">
-                {(asset?.specs?.length ? asset.specs : []).map((row) => (
-                  <tr
-                    key={row.parameter}
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    <td className="p-md font-bold text-primary">{row.parameter}</td>
-                    <td className="p-md font-label-sm text-on-secondary-container">
-                      {row.value}
-                    </td>
-                    <td className="p-md text-on-surface-variant">{row.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <section className="mt-10 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <GlassCard className="p-6">
+            <div className="mb-6">
+              <p className="section-kicker mb-2">Technical details</p>
+              <h2 className="section-title text-2xl md:text-3xl">Specifications</h2>
+            </div>
+            <div className="space-y-3">
+              {specs.length
+                ? specs.map((spec) => (
+                    <div key={spec.parameter} className="flex items-start justify-between gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                      <div>
+                        <div className="text-sm uppercase tracking-[0.18em] text-on-surface-variant">{spec.parameter}</div>
+                        <div className="mt-1 font-medium text-primary">{spec.value}</div>
+                      </div>
+                      <div className="max-w-[45%] text-right text-sm text-on-surface-variant">{spec.notes}</div>
+                    </div>
+                  ))
+                : <p className="text-sm text-on-surface-variant">No specifications available yet.</p>}
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="section-kicker mb-2">Trust</p>
+                <h2 className="section-title text-2xl md:text-3xl">Creator profile</h2>
+              </div>
+              <span className="material-symbols-outlined text-accent">verified</span>
+            </div>
+            <div className="rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent">
+                  <span className="material-symbols-outlined text-[28px]">person</span>
+                </div>
+                <div>
+                  <div className="text-xl font-semibold text-primary">Etherion Systems</div>
+                  <div className="text-sm text-on-surface-variant">@etherion_hq</div>
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
+                Specializing in high-frequency data synthesis and autonomous reasoning models for the Aetheric network.
+              </p>
+            </div>
+          </GlassCard>
         </section>
       </main>
 
-      <Footer
-        columns={[
-          {
-            title: "Resources",
-            links: [
-              { label: "Documentation", href: "#" },
-              { label: "Network Status", href: "#" },
-              { label: "Github", href: "#" },
-            ],
-          },
-          {
-            title: "Legal",
-            links: [
-              { label: "Privacy Policy", href: "#" },
-              { label: "Terms of Service", href: "#" },
-              { label: "Discord", href: "#" },
-            ],
-          },
-        ]}
-      />
+      <Footer />
     </div>
   );
 }

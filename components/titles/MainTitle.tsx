@@ -6,14 +6,7 @@ interface MainTitleProps {
 const MainTitle: React.FC<MainTitleProps> = ({ children, className = '' }) => {
   return (
     <h1 
-      className={`
-        text-5xl md:text-7xl 
-        font-extrabold 
-        text-transparent bg-clip-text bg-gradient-to-r from-[#00FFA3] to-[#00b875]
-        tracking-tight
-        drop-shadow-lg
-        ${className}
-      `}
+      className={`font-heading text-5xl font-semibold tracking-tight text-primary md:text-7xl ${className}`}
     >
       {children}
     </h1>

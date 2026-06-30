@@ -1,0 +1,65 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 16.1.6 (App Router), React 19.2.3, Tailwind CSS 4, TypeScript 5
+  Architecture: Page-based App Router with component library (buttons/, cards/, menu/, titles/)
+  Package name: tokenizer
+  Project: AgentVerseStellar/UI — marketplace UI for AI model tokens on Stellar
+  Path alias: @/* (maps to project root)
+  Styling: Tailwind CSS 4 via PostCSS, dark-first theme with #00FFA3 accent
+  No test runner detected; no CI pipeline configured
+
+  Multi-repo context:
+    - UI (this repo) — Next.js frontend
+    - Backend — NestJS API
+    - Landing-page — Next.js marketing site
+    - Smart-contracts — Rust/Soroban
+
+testing:
+  strict_tdd: false
+  reason: No test runner is installed or configured. Install one (e.g., Vitest, Jest, Playwright) to enable TDD.
+
+  runner:
+    available: false
+    reason: No test dependencies found in package.json; no test config files detected.
+
+  layers:
+    unit: { available: false, tool: null }
+    integration: { available: false, tool: null }
+    e2e: { available: false, tool: null }
+
+  coverage:
+    available: false
+    command: null
+
+  quality:
+    linter: { available: true, command: "eslint" }
+    type_checker: { available: true, command: "npx tsc --noEmit" }
+    formatter: { available: false, command: null }
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference design tokens and existing component patterns
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Follow atomic design component structure when extending
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns (App Router, client/server components)
+    - Use existing design tokens (#00FFA3 accent, dark theme)
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: "npm run build && npm run lint"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

@@ -10,19 +10,7 @@ const SecondaryButton: React.FC<SecondaryButtonProps> = ({ children, onClick, cl
   return (
     <button
       onClick={onClick}
-      className={`
-        px-6 py-3 
-        bg-transparent 
-        border-2 border-[#00FFA3] 
-        text-[#00FFA3] 
-        font-bold 
-        rounded-lg 
-        hover:bg-[#00FFA3] 
-        hover:text-black 
-        transition-all duration-300
-        transform hover:-translate-y-1
-        ${className}
-      `}
+      className={`focus-ring inline-flex items-center justify-center rounded-full border border-accent/30 bg-transparent px-6 py-3 font-semibold text-accent transition-all duration-200 hover:border-accent/60 hover:bg-accent/10 active:scale-95 ${className}`}
     >
       {children}
     </button>

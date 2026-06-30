@@ -1,108 +1,127 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-surface-dim: #141313;
-  --color-on-tertiary-container: #636565;
-  --color-on-error-container: #ffdad6;
-  --color-on-background: #e5e2e1;
-  --color-secondary: #bdc7d9;
-  --color-on-tertiary-fixed-variant: #454747;
-  --color-inverse-surface: #e5e2e1;
-  --color-inverse-on-surface: #313030;
-  --color-surface: #141313;
-  --color-secondary-fixed-dim: #bdc7d9;
-  --color-on-secondary-fixed: #121c2a;
-  --color-error: #ffb4ab;
-  --color-on-primary-fixed: #1a1c1c;
-  --color-background: #141313;
-  --color-inverse-primary: #5d5f5f;
-  --color-surface-container-lowest: #0e0e0e;
-  --color-on-tertiary-fixed: #1a1c1c;
-  --color-primary-fixed-dim: #c6c6c7;
-  --color-on-tertiary: #2f3131;
-  --color-on-error: #690005;
-  --color-on-secondary-fixed-variant: #3d4756;
-  --color-error-container: #93000a;
-  --color-primary-container: #e2e2e2;
-  --color-on-secondary-container: #afb9cb;
-  --color-secondary-fixed: #d9e3f6;
-  --color-outline-variant: #444748;
-  --color-outline: #8e9192;
-  --color-on-primary-fixed-variant: #454747;
-  --color-tertiary-container: #e2e2e2;
-  --color-surface-container-high: #2a2a2a;
-  --color-tertiary-fixed: #e2e2e2;
-  --color-tertiary: #ffffff;
-  --color-surface-bright: #3a3939;
-  --color-primary-fixed: #e2e2e2;
+  --color-background: #050816;
+  --color-surface: #0b1020;
+  --color-surface-dim: #0a0f1c;
+  --color-surface-container-lowest: #090d18;
+  --color-surface-container-low: #0f1628;
+  --color-surface-container: #131c31;
+  --color-surface-container-high: #18233b;
+  --color-surface-container-highest: #1f2c49;
+  --color-surface-variant: #24314f;
+  --color-outline: #7f8db0;
+  --color-outline-variant: rgba(127, 141, 176, 0.22);
   --color-primary: #ffffff;
-  --color-surface-container-highest: #353434;
-  --color-surface-container: #201f1f;
-  --color-on-primary-container: #636565;
-  --color-tertiary-fixed-dim: #c6c6c7;
-  --color-surface-tint: #c6c6c7;
-  --color-surface-container-low: #1c1b1b;
-  --color-secondary-container: #404a59;
-  --color-on-surface-variant: #c4c7c8;
-  --color-on-primary: #2f3131;
-  --color-surface-variant: #353434;
-  --color-on-surface: #e5e2e1;
-  --color-on-secondary: #27313f;
+  --color-on-primary: #050816;
+  --color-on-background: #e9edf9;
+  --color-on-surface: #e9edf9;
+  --color-on-surface-variant: #b5bfd9;
+  --color-secondary: #7fd7ff;
   --color-accent: #5ffbf1;
+  --color-accent-soft: rgba(95, 251, 241, 0.12);
+  --color-danger: #ff7d8a;
 
-  --font-label-sm: "JetBrains Mono", monospace;
-  --font-headline-md: "Geist", sans-serif;
-  --font-headline-lg: "Geist", sans-serif;
-  --font-display-xl: "Geist", sans-serif;
-  --font-body-lg: "Inter", sans-serif;
-  --font-body-md: "Inter", sans-serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-label: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --font-heading: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --font-size-label-sm: 0.75rem;
-  --font-size-headline-md: 2rem;
-  --font-size-headline-lg: 3rem;
-  --font-size-display-xl: 4.5rem;
-  --font-size-body-lg: 1.125rem;
-  --font-size-body-md: 1rem;
+  --font-size-label-sm: 12px;
+  --font-size-body-md: 16px;
+  --font-size-body-lg: 18px;
+  --font-size-headline-md: 32px;
+  --font-size-headline-lg: 48px;
+  --font-size-display-xl: 72px;
 
   --spacing-container-max: 1280px;
   --spacing-gutter: 24px;
 }
 
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background-color: #050816;
-  color: #e5e2e1;
-  font-family: "Inter", sans-serif;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top, rgba(95, 251, 241, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(127, 215, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, #050816 0%, #070b16 55%, #050816 100%);
+  color: #e9edf9;
+  font-family: var(--font-body), "Inter", sans-serif;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background-color: rgba(95, 251, 241, 0.28);
+  color: #ffffff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050816;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(95, 251, 241, 0.45), rgba(127, 215, 255, 0.2));
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(95, 251, 241, 0.8), rgba(127, 215, 255, 0.35));
+}
+
 @utility glass-card {
-  background: rgba(20, 19, 19, 0.6);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(11, 16, 32, 0.76);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(142, 145, 146, 0.15);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(127, 141, 176, 0.14);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 @utility glass-card-hover {
   &:hover {
-    border-color: rgba(255, 255, 255, 0.3);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%), rgba(20, 19, 19, 0.7);
+    border-color: rgba(95, 251, 241, 0.24);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(95, 251, 241, 0.08);
+    transform: translateY(-2px);
   }
 }
 
-@utility glow-accent {
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.15));
+@utility page-shell {
+  @apply max-w-container-max mx-auto px-gutter;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
+@utility section-kicker {
+  @apply font-label text-xs uppercase tracking-[0.22em] text-on-surface-variant;
 }
-::-webkit-scrollbar-track {
-  background: #0e0e0e;
+
+@utility section-title {
+  @apply font-heading font-semibold text-primary tracking-tight;
 }
-::-webkit-scrollbar-thumb {
-  background: #353434;
-  border-radius: 10px;
+
+@utility section-copy {
+  @apply text-base leading-relaxed text-on-surface-variant;
+}
+
+@utility pill {
+  @apply inline-flex items-center gap-2 rounded-full border border-outline-variant/30 px-3 py-1 text-xs;
+}
+
+@utility input-surface {
+  @apply w-full rounded-xl border border-outline-variant/30 bg-surface-container-low/80 px-4 py-4 text-base text-on-surface placeholder:text-on-surface-variant/70 outline-none transition focus:border-accent/40 focus:ring-2 focus:ring-accent/15;
+}
+
+@utility focus-ring {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
 }

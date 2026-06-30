@@ -27,7 +27,14 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
     throw new Error(`API ${res.status}: ${res.statusText} — ${body}`);
   }
 
-  return res.json();
+  const json = await res.json();
+
+  // Unwrap { data, meta } envelope used by backend ResponseInterceptor
+  if (json && typeof json === 'object' && 'data' in json) {
+    return json.data;
+  }
+
+  return json;
 }
 
 // ── Dashboard ──

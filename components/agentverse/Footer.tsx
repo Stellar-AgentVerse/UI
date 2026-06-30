@@ -30,38 +30,38 @@ const defaultColumns: FooterColumn[] = [
 
 export default function Footer({ columns = defaultColumns }: FooterProps) {
   return (
-    <footer className="w-full py-xl bg-background border-t border-outline-variant/10">
-      <div className="max-w-container-max mx-auto px-lg flex flex-col md:flex-row justify-between gap-lg">
+    <footer className="w-full border-t border-outline-variant/10 bg-background/80 py-20 backdrop-blur">
+      <div className="page-shell flex flex-col justify-between gap-10 md:flex-row">
         <div>
-          <div className="flex items-center gap-base mb-sm">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/20 bg-white/5">
+              <span className="material-symbols-outlined text-[16px] text-accent">
                 auto_awesome
               </span>
             </div>
-            <span className="font-headline-md text-headline-md font-bold text-primary">
+            <span className="font-heading text-[22px] font-semibold text-primary">
               AgentVerse
             </span>
           </div>
-          <p className="text-on-surface-variant font-body-md max-w-xs">
+          <p className="max-w-sm text-body-md text-on-surface-variant">
             The decentralized marketplace for sovereign intelligence and
             autonomous workflows.
           </p>
-          <p className="font-label-sm text-label-sm text-on-surface-variant mt-lg opacity-60">
-            &copy; 2024 AgentVerse. Powered by Stellar.
+          <p className="mt-8 text-label-sm text-label-sm text-on-surface-variant/70">
+            &copy; 2026 AgentVerse. Powered by Stellar.
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-lg">
+        <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
           {columns.map((col) => (
-            <div key={col.title} className="flex flex-col gap-base">
-              <span className="text-primary font-bold font-label-sm text-label-sm">
+            <div key={col.title} className="flex flex-col gap-4">
+              <span className="text-label-sm font-semibold uppercase tracking-[0.18em] text-primary">
                 {col.title}
               </span>
               {col.links.map((link) => (
                 <Link
-                  key={link.href}
+                  key={`${link.href}-${link.label}`}
                   href={link.href}
-                  className="text-on-surface-variant hover:text-primary transition-colors font-body-md"
+                  className="text-body-md text-on-surface-variant transition-colors hover:text-primary"
                 >
                   {link.label}
                 </Link>

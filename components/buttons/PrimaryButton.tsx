@@ -10,19 +10,7 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({ children, onClick, classN
   return (
     <button
       onClick={onClick}
-      className={`
-        px-6 py-3 
-        bg-[#00FFA3] 
-        text-black 
-        font-bold 
-        rounded-lg 
-        shadow-[0_0_15px_rgba(0,255,163,0.4)]
-        hover:shadow-[0_0_25px_rgba(0,255,163,0.6)]
-        hover:bg-[#33ffb5]
-        transition-all duration-300
-        transform hover:-translate-y-1
-        ${className}
-      `}
+      className={`focus-ring inline-flex items-center justify-center rounded-full bg-accent px-6 py-3 font-semibold text-on-primary shadow-[0_12px_40px_rgba(95,251,241,0.18)] transition-all duration-200 hover:brightness-110 active:scale-95 ${className}`}
     >
       {children}
     </button>

@@ -7,16 +7,11 @@ const SectionTitle: React.FC<SectionTitleProps> = ({ children, className = '' })
   return (
     <div className={`relative inline-block ${className}`}>
         <h2 
-        className={`
-            text-3xl md:text-4xl 
-            font-bold 
-            text-white
-            mb-2
-        `}
+        className="mb-2 font-heading text-3xl font-semibold text-primary md:text-4xl"
         >
         {children}
         </h2>
-        <div className="h-1 w-1/3 bg-[#00FFA3] rounded-full"></div>
+        <div className="h-1 w-1/3 rounded-full bg-accent"></div>
     </div>
   );
 };

@@ -1,235 +1,218 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import GlassCard from "@/components/agentverse/GlassCard";
+import { useEffect, useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
-import { fetchAssetTypes, createAsset } from "@/lib/api";
+import GlassCard from "@/components/agentverse/GlassCard";
+import NavBar from "@/components/agentverse/NavBar";
+import { createAsset, fetchAssetTypes, fetchTags } from "@/lib/api";
 import type { AssetType } from "@/lib/api";
 
 const fallbackTypes: AssetType[] = [
-  {
-    id: "agent",
-    icon: "smart_toy",
-    title: "Agent",
-    description: "Autonomous logic entities powered by LLMs.",
-  },
-  {
-    id: "prompt",
-    icon: "terminal",
-    title: "Prompt",
-    description: "Optimized instructions and reasoning chains.",
-  },
-  {
-    id: "model",
-    icon: "memory",
-    title: "Model",
-    description: "Custom fine-tunes or specialized weights.",
-  },
-  {
-    id: "dataset",
-    icon: "database",
-    title: "Dataset",
-    description: "High-signal training corpora or vector stores.",
-  },
-  {
-    id: "tool",
-    icon: "build",
-    title: "Tool",
-    description: "Custom API connectors and function calls.",
-  },
-  {
-    id: "oracle",
-    icon: "radar",
-    title: "Oracle",
-    description: "Real-world data validation for smart agents.",
-  },
+  { id: "agent", icon: "smart_toy", title: "Agent", description: "Autonomous logic entities powered by LLMs." },
+  { id: "prompt", icon: "terminal", title: "Prompt", description: "Optimized instructions and reasoning chains." },
+  { id: "model", icon: "memory", title: "Model", description: "Custom fine-tunes or specialized weights." },
+  { id: "dataset", icon: "database", title: "Dataset", description: "High-signal training corpora or vector stores." },
+  { id: "tool", icon: "build", title: "Tool", description: "Custom API connectors and function calls." },
+  { id: "oracle", icon: "radar", title: "Oracle", description: "Real-world data validation for smart agents." },
 ];
+
+const defaultTags = ["beta", "experimental", "stable", "deprecated"];
 
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [assetTypes, setAssetTypes] = useState<AssetType[]>(fallbackTypes);
   const [assetName, setAssetName] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>(["beta"]);
+  const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
+  const [message, setMessage] = useState<string>("");
+  const [availableTags, setAvailableTags] = useState<string[]>(defaultTags);
 
   useEffect(() => {
     fetchAssetTypes().then(setAssetTypes).catch(console.error);
+    fetchTags().then((tags) => setAvailableTags(tags.map((tag) => tag.name))).catch(console.error);
   }, []);
+
+  const currentStep = useMemo(() => {
+    if (!selectedType) return 1;
+    if (!assetName.trim()) return 2;
+    return 3;
+  }, [assetName, selectedType]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((current) => {
+      if (current.includes(tag)) return current.filter((item) => item !== tag);
+      return [...current, tag];
+    });
+  };
 
   const handleCreate = async () => {
     if (!selectedType || !assetName.trim()) {
-      alert("Please select an asset type and enter a name.");
+      setStatus("error");
+      setMessage("Select an asset type and provide a name before continuing.");
       return;
     }
+
+    setStatus("creating");
+    setMessage("Creating asset and preparing the detail page...");
+
     try {
-      const result = await createAsset({ name: assetName, type: selectedType });
-      alert(`Asset created: ${result.name}`);
+      const result = await createAsset({
+        name: assetName,
+        type: selectedType,
+        tags: selectedTags,
+      });
       window.location.href = `/assets/${result.id}`;
     } catch (err) {
-      alert("Failed to create asset: " + (err as Error).message);
+      setStatus("error");
+      setMessage(`Failed to create asset: ${(err as Error).message}`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background selection:bg-primary/20">
-      {/* Top Navigation */}
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-outline-variant/20">
-        <div className="max-w-container-max mx-auto px-md h-20 flex items-center justify-between">
-          <div className="flex items-center gap-base">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-lg">
-                auto_awesome
-              </span>
-            </div>
-            <span className="font-headline-md text-headline-md font-bold tracking-tighter text-primary">
-              AgentVerse
-            </span>
-          </div>
-          <div className="hidden md:flex gap-lg">
-            <a
-              className="text-on-surface-variant font-medium hover:text-primary transition-colors duration-300 font-label-sm text-label-sm"
-              href="#"
-            >
-              MARKETPLACE
-            </a>
-            <a
-              className="text-on-surface-variant font-medium hover:text-primary transition-colors duration-300 font-label-sm text-label-sm"
-              href="#"
-            >
-              DOCUMENTATION
-            </a>
-            <a
-              className="text-on-surface-variant font-medium hover:text-primary transition-colors duration-300 font-label-sm text-label-sm"
-              href="#"
-            >
-              CREATORS
-            </a>
-          </div>
-          <button className="bg-primary text-on-primary px-md py-xs font-label-sm text-label-sm hover:opacity-90 active:scale-95 transition-all">
-            Launch App
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-x-hidden">
+      <NavBar
+        links={[
+          { label: "Marketplace", href: "/marketplace" },
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Publish", href: "/publish", active: true },
+        ]}
+        rightContent={<button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">Launch App</button>}
+      />
 
-      <main className="min-h-screen pt-32 pb-40 flex flex-col items-center relative overflow-hidden">
-        {/* Atmosphere */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute left-1/2 top-24 h-[24rem] w-[24rem] -translate-x-1/2 rounded-full bg-accent/8 blur-[120px]" />
+      </div>
 
-        <div className="w-full max-w-3xl px-md">
-          {/* Progress Indicator */}
-          <div className="mb-xl">
-            <div className="flex justify-between items-center mb-base">
-              <span className="font-label-sm text-label-sm text-primary">
-                STEP 01
-              </span>
-              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                Asset Identity
-              </span>
-            </div>
-            <div className="w-full h-1 bg-surface-container-highest overflow-hidden rounded-full">
-              <div className="w-1/4 h-full bg-primary transition-all duration-700 ease-out rounded-full" />
-            </div>
+      <main className="page-shell pt-28 pb-32">
+        <section className="mb-10 grid gap-6 lg:grid-cols-[1fr_320px] lg:items-end">
+          <div className="space-y-4">
+            <p className="section-kicker">Publish flow</p>
+            <h1 className="section-title text-4xl md:text-6xl">Build and ship a new asset</h1>
+            <p className="section-copy max-w-2xl">
+              A cleaner creation flow with explicit steps, stronger states, and a better visual hierarchy for serious creators.
+            </p>
           </div>
 
-          {/* Content */}
-          <div className="space-y-lg">
-            <div className="space-y-xs">
-              <h1 className="font-headline-lg text-headline-lg text-primary">
-                What are you building?
-              </h1>
-              <p className="text-on-surface-variant font-body-md">
-                Select the core architecture for your new decentralized asset.
-              </p>
+          <GlassCard className="p-5">
+            <div className="flex items-center justify-between">
+              {[
+                { step: 1, label: "Type" },
+                { step: 2, label: "Identity" },
+                { step: 3, label: "Review" },
+              ].map((item) => (
+                <div key={item.step} className="flex flex-col items-center gap-2 text-center">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${currentStep >= item.step ? "border-accent/30 bg-accent/10 text-accent" : "border-outline-variant/20 text-on-surface-variant"}`}>
+                    {item.step}
+                  </div>
+                  <span className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <GlassCard className="p-6">
+            <div className="mb-6">
+              <p className="section-kicker mb-2">Step 1</p>
+              <h2 className="section-title text-2xl md:text-3xl">Choose the asset type</h2>
+              <p className="mt-2 text-sm text-on-surface-variant">Select the core architecture for your new decentralized asset.</p>
             </div>
 
-            {/* Asset Type Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {assetTypes.map((type) => (
                 <button
                   key={type.id}
                   onClick={() => setSelectedType(type.id)}
-                  className={`glass-card border p-lg text-left transition-all duration-300 relative group overflow-hidden rounded-xl ${
-                    selectedType === type.id
-                      ? "border-primary bg-primary/5"
-                      : "border-outline-variant/30 hover:border-white/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0)_100%),rgba(20,19,19,0.7)]"
-                  }`}
+                  className={`focus-ring relative rounded-2xl border p-5 text-left transition-all ${selectedType === type.id ? "border-accent/35 bg-accent/10 shadow-[0_18px_50px_rgba(95,251,241,0.07)]" : "border-outline-variant/20 bg-white/3 hover:border-accent/25 hover:bg-white/5"}`}
                 >
-                  <div className="absolute top-0 right-0 p-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="material-symbols-outlined text-primary/40 text-sm">
-                      info
-                    </span>
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-accent">
+                    <span className="material-symbols-outlined text-[24px]">{type.icon}</span>
                   </div>
-                  <div className="mb-md">
-                    <span className="material-symbols-outlined text-primary text-4xl">
-                      {type.icon}
-                    </span>
-                  </div>
-                  <h3 className="text-primary font-headline-md text-headline-md mb-xs">
-                    {type.title}
-                  </h3>
-                  <p className="text-on-surface-variant text-label-sm font-label-sm">
-                    {type.description}
-                  </p>
+                  <h3 className="text-xl font-semibold text-primary">{type.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{type.description}</p>
+                  {selectedType === type.id ? <span className="absolute right-4 top-4 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-on-primary">Selected</span> : null}
                 </button>
               ))}
             </div>
 
-            {/* Form Section */}
-            <div className="mt-xl space-y-md">
-              <div className="space-y-xs">
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
-                  Asset Name
-                </label>
+            <div className="mt-8 space-y-6">
+              <div>
+                <label className="section-kicker mb-3 block">Asset name</label>
                 <input
-                  className="w-full bg-[#0A0E1A] border border-outline-variant/30 p-md text-primary focus:outline-none focus:border-primary transition-colors font-body-md rounded"
+                  className="input-surface"
                   placeholder="e.g. Neural-Sentience-v1"
                   type="text"
                   value={assetName}
                   onChange={(e) => setAssetName(e.target.value)}
                 />
               </div>
-              <div className="space-y-xs">
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
-                  Initial Metadata Tag
-                </label>
-                <div className="flex gap-xs flex-wrap">
-                  <span className="bg-primary/10 text-primary border border-primary/20 px-sm py-1 rounded-full text-label-sm font-label-sm">
-                    beta
-                  </span>
-                  <span className="bg-surface-container-highest text-on-surface-variant px-sm py-1 rounded-full text-label-sm font-label-sm">
-                    experimental
-                  </span>
-                  <span className="bg-surface-container-highest text-on-surface-variant px-sm py-1 rounded-full text-label-sm font-label-sm">
-                    stable
-                  </span>
-                  <span className="bg-surface-container-highest text-on-surface-variant px-sm py-1 rounded-full text-label-sm font-label-sm">
-                    deprecated
-                  </span>
+
+              <div>
+                <label className="section-kicker mb-3 block">Metadata tags</label>
+                <div className="flex flex-wrap gap-3">
+                  {availableTags.map((tag) => {
+                    const active = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={`focus-ring rounded-full border px-4 py-2 text-sm transition-all ${active ? "border-accent/30 bg-accent/10 text-accent" : "border-outline-variant/20 text-on-surface-variant hover:border-accent/25 hover:text-primary"}`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
+          </GlassCard>
+
+          <div className="space-y-4">
+            <GlassCard className="p-6">
+              <p className="section-kicker mb-2">Review</p>
+              <h2 className="section-title text-2xl">Asset summary</h2>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                  <span className="text-on-surface-variant">Type</span>
+                  <span className="font-medium text-primary">{selectedType ?? "Not selected"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                  <span className="text-on-surface-variant">Name</span>
+                  <span className="font-medium text-primary">{assetName.trim() || "Untitled asset"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
+                  <span className="text-on-surface-variant">Tags</span>
+                  <span className="font-medium text-primary">{selectedTags.length ? selectedTags.join(", ") : "No tags"}</span>
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+              <p className="section-kicker mb-2">State</p>
+              <h2 className="section-title text-2xl">Creation status</h2>
+              <div className={`mt-4 rounded-2xl border p-4 text-sm ${status === "error" ? "border-danger/30 bg-danger/10 text-danger" : status === "creating" ? "border-accent/30 bg-accent/10 text-accent" : "border-outline-variant/20 bg-white/3 text-on-surface-variant"}`}>
+                {message || "Ready to create your asset."}
+              </div>
+            </GlassCard>
           </div>
-        </div>
+        </section>
       </main>
 
-      {/* Bottom Action Anchor */}
-      <footer className="fixed bottom-0 w-full z-50 bg-background/80 backdrop-blur-xl border-t border-outline-variant/10 py-md">
-        <div className="max-w-3xl mx-auto px-md flex items-center justify-between">
-          <button className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-xs font-label-sm text-label-sm group">
-            <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">
-              arrow_back
-            </span>
+      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/10 bg-background/85 backdrop-blur-2xl">
+        <div className="page-shell flex items-center justify-between gap-4 py-4">
+          <button className="focus-ring inline-flex items-center gap-2 rounded-full border border-outline-variant/25 px-4 py-3 text-sm text-on-surface-variant transition-colors hover:border-accent/25 hover:text-primary">
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
             Cancel
           </button>
-          <div className="flex gap-md items-center">
-            <span className="text-on-surface-variant font-label-sm text-label-sm opacity-50 hidden sm:block">
-              Configuration pending...
-            </span>
-            <button onClick={handleCreate} className="bg-primary text-on-primary px-lg h-[52px] font-bold text-label-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-md uppercase tracking-widest rounded-sm">
-              {selectedType && assetName.trim() ? "CREATE ASSET" : "NEXT STEP"}
-              <span className="material-symbols-outlined text-sm">
-                arrow_forward
-              </span>
-            </button>
-          </div>
+
+          <button
+            onClick={handleCreate}
+            className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95"
+          >
+            {status === "creating" ? "Creating..." : selectedType && assetName.trim() ? "Create asset" : "Continue"}
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
         </div>
       </footer>
 
