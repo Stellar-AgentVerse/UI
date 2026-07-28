@@ -36,8 +36,8 @@ export function useCreateAsset() {
 
   return useMutation<AssetDetail, Error, CreateAssetPayload & { creator?: string }>({
     mutationFn: (payload) => {
-      const { creator, ...rest } = payload;
-      return createAsset(rest, creator);
+      const { creator: _creator, ...rest } = payload;
+      return createAsset(rest);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });

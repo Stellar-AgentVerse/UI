@@ -1,5 +1,19 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+const AUTH_TOKEN_KEY = 'agentverse.auth.token';
+
+export function setAuthToken(token: string) {
+  if (typeof window !== 'undefined') window.sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAuthToken() {
+  if (typeof window !== 'undefined') window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function getAuthToken() {
+  return typeof window === 'undefined' ? undefined : window.sessionStorage.getItem(AUTH_TOKEN_KEY) ?? undefined;
+}
+
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | undefined>;
 }
@@ -18,7 +32,11 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   }
 
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...fetchOpts.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+      ...fetchOpts.headers,
+    },
     ...fetchOpts,
   });
 
@@ -237,6 +255,42 @@ export interface CreateAssetPayload {
   tags?: string[];
 }
 
+export interface PurchaseIntent {
+  purchaseId: string;
+  unsignedXdr: string;
+  expiresAt: string;
+  contractId: string;
+  networkPassphrase: string;
+  assetId: string;
+  amount: number;
+  idempotencyKey: string;
+}
+
+export interface PurchaseAccess {
+  purchaseId: string;
+  assetId: string;
+  deliveryReference: string;
+  purchasedAt: string;
+}
+
+export function createPurchaseIntent(assetId: string, idempotencyKey?: string) {
+  return request<PurchaseIntent>('/api/marketplace/purchases', {
+    method: 'POST',
+    body: JSON.stringify({ assetId, idempotencyKey }),
+  });
+}
+
+export function confirmPurchase(purchaseId: string, transactionHash: string) {
+  return request<{ purchaseId: string; status: string }>(`/api/marketplace/purchases/${purchaseId}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ transactionHash }),
+  });
+}
+
+export function fetchPurchaseAccess(purchaseId: string) {
+  return request<PurchaseAccess>(`/api/marketplace/purchases/${purchaseId}/access`);
+}
+
 export function fetchAssetTypes() {
   return request<AssetType[]>('/api/assets/types');
 }
@@ -249,10 +303,9 @@ export function fetchAsset(id: string) {
   return request<AssetDetail>(`/api/assets/${id}`);
 }
 
-export function createAsset(payload: CreateAssetPayload, creator?: string) {
+export function createAsset(payload: CreateAssetPayload) {
   return request<AssetDetail>('/api/assets', {
     method: 'POST',
     body: JSON.stringify(payload),
-    params: { creator },
   });
 }
