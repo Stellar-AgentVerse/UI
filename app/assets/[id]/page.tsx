@@ -5,8 +5,9 @@ import { useParams } from "next/navigation";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { fetchAsset } from "@/lib/api";
+import { createPurchaseIntent, confirmPurchase, fetchAsset, fetchPurchaseAccess } from "@/lib/api";
 import type { AssetDetail } from "@/lib/api";
+import { connectFreighter, signAndSubmitPurchase } from "@/lib/stellar-purchase";
 
 function MetricTile({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
@@ -27,6 +28,8 @@ function MetricTile({ label, value, icon }: { label: string; value: string; icon
 export default function AssetDetails() {
   const params = useParams();
   const [asset, setAsset] = useState<AssetDetail | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [purchaseState, setPurchaseState] = useState<string | null>(null);
 
   useEffect(() => {
     const id = params?.id as string;
@@ -38,6 +41,39 @@ export default function AssetDetails() {
   const specs = asset?.specs ?? [];
   const capabilities = asset?.capabilities ?? [];
 
+  async function connectWallet() {
+    try {
+      const address = await connectFreighter();
+      setWalletAddress(address);
+      setPurchaseState(null);
+    } catch (error) {
+      setPurchaseState(error instanceof Error ? error.message : 'Unable to connect Freighter');
+    }
+  }
+
+  async function purchasePrompt() {
+    if (!asset || asset.type !== 'PROMPT') return;
+    try {
+      const buyer = walletAddress ?? (await connectFreighter());
+      setWalletAddress(buyer);
+      setPurchaseState('Preparing transaction…');
+      const intent = await createPurchaseIntent(asset.id, crypto.randomUUID());
+      setPurchaseState('Waiting for Freighter signature…');
+      const transactionHash = await signAndSubmitPurchase(
+        intent.unsignedXdr,
+        intent.networkPassphrase,
+        buyer,
+      );
+      setPurchaseState('Confirming on Stellar…');
+      await confirmPurchase(intent.purchaseId, transactionHash);
+      const access = await fetchPurchaseAccess(intent.purchaseId);
+      setPurchaseState('Access granted. Opening delivery…');
+      window.open(access.deliveryReference, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setPurchaseState(error instanceof Error ? error.message : 'Purchase failed');
+    }
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       <NavBar
@@ -48,8 +84,8 @@ export default function AssetDetails() {
         ]}
         rightContent={
           <div className="flex items-center gap-3">
-            <button className="focus-ring rounded-full border border-outline-variant/25 px-4 py-2 text-sm text-on-surface-variant transition-colors hover:text-primary">
-              Connect wallet
+            <button onClick={connectWallet} className="focus-ring rounded-full border border-outline-variant/25 px-4 py-2 text-sm text-on-surface-variant transition-colors hover:text-primary">
+              {walletAddress ? `${walletAddress.slice(0, 5)}…${walletAddress.slice(-4)}` : 'Connect wallet'}
             </button>
             <button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
               Launch App
@@ -112,10 +148,11 @@ export default function AssetDetails() {
                 <div className="pb-1 text-sm text-on-surface-variant">credits / run</div>
               </div>
 
-              <button className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
+              <button onClick={purchasePrompt} disabled={asset?.type !== 'PROMPT'} className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
                 <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-                Execute asset
+                Buy prompt
               </button>
+              {purchaseState && <p role="status" className="mt-3 text-sm text-on-surface-variant">{purchaseState}</p>}
             </GlassCard>
 
             <div className="grid grid-cols-2 gap-4">
