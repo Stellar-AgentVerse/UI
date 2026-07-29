@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { createAsset, fetchAssetTypes, fetchTags } from "@/lib/api";
 import type { AssetType } from "@/lib/api";
+import { useAssetTypes, useCreateAsset, useTags } from "@/lib/queries";
 
 const fallbackTypes: AssetType[] = [
   { id: "agent", icon: "smart_toy", title: "Agent", description: "Autonomous logic entities powered by LLMs." },
@@ -20,17 +20,15 @@ const defaultTags = ["beta", "experimental", "stable", "deprecated"];
 
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [assetTypes, setAssetTypes] = useState<AssetType[]>(fallbackTypes);
   const [assetName, setAssetName] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>(["beta"]);
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [message, setMessage] = useState<string>("");
-  const [availableTags, setAvailableTags] = useState<string[]>(defaultTags);
-
-  useEffect(() => {
-    fetchAssetTypes().then(setAssetTypes).catch(console.error);
-    fetchTags().then((tags) => setAvailableTags(tags.map((tag) => tag.name))).catch(console.error);
-  }, []);
+  const typesQuery = useAssetTypes();
+  const tagsQuery = useTags();
+  const createMutation = useCreateAsset();
+  const assetTypes = typesQuery.data ?? fallbackTypes;
+  const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? defaultTags;
 
   const currentStep = useMemo(() => {
     if (!selectedType) return 1;
@@ -54,18 +52,17 @@ export default function PublishAsset() {
 
     setStatus("creating");
     setMessage("Creating asset and preparing the detail page...");
-
-    try {
-      const result = await createAsset({
+    createMutation.mutate({
         name: assetName,
         type: selectedType,
         tags: selectedTags,
+      }, {
+        onSuccess: (result) => { window.location.href = `/assets/${result.id}`; },
+        onError: (error) => {
+          setStatus("error");
+          setMessage(`Failed to create asset: ${error.message}`);
+        },
       });
-      window.location.href = `/assets/${result.id}`;
-    } catch (err) {
-      setStatus("error");
-      setMessage(`Failed to create asset: ${(err as Error).message}`);
-    }
   };
 
   return (

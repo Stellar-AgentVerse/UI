@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { fetchCategories, fetchFeatured, fetchTrending, searchAssets } from "@/lib/api";
 import type { Category, MarketplaceItem } from "@/lib/api";
+import { useCategories, useFeatured, useSearchAssets, useTrending } from "@/lib/queries";
 
 const fallbackFeatured: MarketplaceItem[] = [
   {
@@ -123,17 +123,12 @@ function MarketplaceCard({ item, featured = false }: { item: MarketplaceItem; fe
 }
 
 export default function MarketplacePage() {
-  const [featuredItems, setFeaturedItems] = useState<MarketplaceItem[]>(fallbackFeatured);
-  const [trendingItems, setTrendingItems] = useState<MarketplaceItem[]>(fallbackTrending);
-  const [apiCategories, setApiCategories] = useState<Category[]>(categoryDefs);
   const [activeCategory, setActiveCategory] = useState("Agents");
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    fetchFeatured().then(setFeaturedItems).catch(console.error);
-    fetchTrending().then(setTrendingItems).catch(console.error);
-    fetchCategories().then(setApiCategories).catch(console.error);
-  }, []);
+  const featuredQuery = useFeatured();
+  const trendingQuery = useTrending();
+  const categoriesQuery = useCategories();
+  const apiCategories = categoriesQuery.data ?? categoryDefs;
 
   const categories = useMemo(
     () => apiCategories.map((category) => ({ ...category, active: category.label === activeCategory })),
@@ -145,18 +140,17 @@ export default function MarketplacePage() {
     [activeCategory, categories],
   );
 
+  const searchQuery = useSearchAssets(searchTerm, activeType);
+  const featuredItems = featuredQuery.data ?? fallbackFeatured;
+  const trendingItems = useMemo(
+    () => searchTerm.length > 2
+      ? (searchQuery.data?.items ?? [])
+      : (trendingQuery.data ?? fallbackTrending),
+    [searchTerm, searchQuery.data, trendingQuery.data],
+  );
+
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    if (value.length > 2) {
-      searchAssets(value, activeType)
-        .then((res) => setTrendingItems(res.items))
-        .catch(console.error);
-      return;
-    }
-
-    if (value.length === 0) {
-      fetchTrending().then(setTrendingItems).catch(console.error);
-    }
   };
 
   const filteredTrending = useMemo(() => {
@@ -185,6 +179,7 @@ export default function MarketplacePage() {
       </div>
 
       <main className="page-shell pt-28 pb-24">
+        {(featuredQuery.isError || trendingQuery.isError || categoriesQuery.isError || searchQuery.isError) && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load marketplace data.</p>}
         <section className="mb-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
             <p className="section-kicker">Marketplace</p>

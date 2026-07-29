@@ -1,17 +1,43 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 const AUTH_TOKEN_KEY = 'agentverse.auth.token';
+const AUTH_USER_KEY = 'agentverse.auth.user';
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly statusText: string,
+    public readonly details?: unknown,
+  ) {
+    super(`API ${status}: ${statusText}`);
+    this.name = 'ApiError';
+  }
+}
 
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') window.sessionStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
 export function clearAuthToken() {
-  if (typeof window !== 'undefined') window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    window.sessionStorage.removeItem(AUTH_USER_KEY);
+  }
 }
 
-function getAuthToken() {
+export function getAuthToken() {
   return typeof window === 'undefined' ? undefined : window.sessionStorage.getItem(AUTH_TOKEN_KEY) ?? undefined;
+}
+
+export function getAuthUser<T>() {
+  if (typeof window === 'undefined') return undefined;
+  const value = window.sessionStorage.getItem(AUTH_USER_KEY);
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
 }
 
 interface FetchOptions extends RequestInit {
@@ -31,19 +57,28 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
     if (qs) url += `?${qs}`;
   }
 
+  const authToken = getAuthToken();
   const res = await fetch(url, {
+    ...fetchOpts,
     headers: {
       'Content-Type': 'application/json',
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...fetchOpts.headers,
     },
-    ...fetchOpts,
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`API ${res.status}: ${res.statusText} — ${body}`);
+    let details: unknown = body;
+    try {
+      details = body ? JSON.parse(body) : undefined;
+    } catch {
+      // Keep non-JSON error bodies as text.
+    }
+    throw new ApiError(res.status, res.statusText, details);
   }
+
+  if (res.status === 204) return undefined as T;
 
   const json = await res.json();
 
@@ -53,6 +88,40 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   }
 
   return json;
+}
+
+// ── Auth ──
+export interface User {
+  publicKey: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  displayName: string;
+  avatar: string;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
+export interface AuthResult {
+  token: string;
+  user: User;
+}
+
+export function requestAuthChallenge(publicKey: string) {
+  return request<{ challenge: string }>('/api/auth/challenge', {
+    method: 'POST',
+    body: JSON.stringify({ publicKey }),
+  });
+}
+
+export async function verifyWalletAuth(publicKey: string, signature: string) {
+  const result = await request<AuthResult>('/api/auth/wallet', {
+    method: 'POST',
+    body: JSON.stringify({ publicKey, signature }),
+  });
+  setAuthToken(result.token);
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(result.user));
+  }
+  return result;
 }
 
 // ── Dashboard ──
@@ -308,4 +377,56 @@ export function createAsset(payload: CreateAssetPayload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+// ── Payments ──
+export interface PaymentResult {
+  success: boolean;
+  transactionId: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface CreatePaymentPayload {
+  amount: number;
+  currency: string;
+  provider?: string;
+  description?: string;
+  customer?: { email?: string; name?: string };
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateRefundPayload {
+  transactionId: string;
+  amount?: number;
+  reason?: string;
+  provider?: string;
+}
+
+export function createPayment(payload: CreatePaymentPayload) {
+  return request<PaymentResult>('/api/payments', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createRefund(payload: CreateRefundPayload) {
+  return request<PaymentResult>('/api/payments/refund', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function verifyPayment(transactionId: string, provider?: string) {
+  return request<PaymentResult>(`/api/payments/verify/${transactionId}`, {
+    params: { provider },
+  });
+}
+
+export function fetchPaymentProviders() {
+  return request<{ providers: string[] }>('/api/payments/providers');
 }

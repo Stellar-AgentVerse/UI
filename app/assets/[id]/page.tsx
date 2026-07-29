@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { createPurchaseIntent, confirmPurchase, fetchAsset, fetchPurchaseAccess } from "@/lib/api";
-import type { AssetDetail } from "@/lib/api";
 import { connectFreighter, signAndSubmitPurchase } from "@/lib/stellar-purchase";
+import { useAsset, useConfirmPurchase, useCreatePurchaseIntent, usePurchaseAccess } from "@/lib/queries";
 
 function MetricTile({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
@@ -27,14 +26,13 @@ function MetricTile({ label, value, icon }: { label: string; value: string; icon
 
 export default function AssetDetails() {
   const params = useParams();
-  const [asset, setAsset] = useState<AssetDetail | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [purchaseState, setPurchaseState] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = params?.id as string;
-    if (id) fetchAsset(id).then(setAsset).catch(console.error);
-  }, [params?.id]);
+  const assetQuery = useAsset(params?.id as string | undefined);
+  const purchaseIntentMutation = useCreatePurchaseIntent();
+  const confirmPurchaseMutation = useConfirmPurchase();
+  const purchaseAccessMutation = usePurchaseAccess();
+  const asset = assetQuery.data;
 
   const metrics = useMemo(() => asset?.metrics, [asset]);
   const workflow = asset?.workflow ?? [];
@@ -57,7 +55,7 @@ export default function AssetDetails() {
       const buyer = walletAddress ?? (await connectFreighter());
       setWalletAddress(buyer);
       setPurchaseState('Preparing transaction…');
-      const intent = await createPurchaseIntent(asset.id, crypto.randomUUID());
+      const intent = await purchaseIntentMutation.mutateAsync({ assetId: asset.id, idempotencyKey: crypto.randomUUID() });
       setPurchaseState('Waiting for Freighter signature…');
       const transactionHash = await signAndSubmitPurchase(
         intent.unsignedXdr,
@@ -65,8 +63,8 @@ export default function AssetDetails() {
         buyer,
       );
       setPurchaseState('Confirming on Stellar…');
-      await confirmPurchase(intent.purchaseId, transactionHash);
-      const access = await fetchPurchaseAccess(intent.purchaseId);
+      await confirmPurchaseMutation.mutateAsync({ purchaseId: intent.purchaseId, transactionHash });
+      const access = await purchaseAccessMutation.mutateAsync(intent.purchaseId);
       setPurchaseState('Access granted. Opening delivery…');
       window.open(access.deliveryReference, '_blank', 'noopener,noreferrer');
     } catch (error) {
@@ -100,6 +98,7 @@ export default function AssetDetails() {
       </div>
 
       <main className="page-shell pt-28 pb-24">
+        {assetQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load this asset.</p>}
         <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <GlassCard className="relative overflow-hidden p-0">
             <div className="relative min-h-[32rem] overflow-hidden rounded-2xl">

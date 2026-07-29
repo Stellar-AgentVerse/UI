@@ -34,3 +34,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# API integration
+
+The UI connects to the NestJS backend through `NEXT_PUBLIC_API_URL`.
+Copy `.env.example` to `.env.local` and point it at the running backend (the
+default local URL is `http://localhost:3000`). The backend exposes its REST
+contract through the global `/api` prefix and Swagger at `/api/docs`.
+
+Authentication uses the wallet challenge flow:
+
+1. `POST /api/auth/challenge`
+2. Sign the challenge with the connected wallet.
+3. `POST /api/auth/wallet` to receive and persist the JWT.
+
+The client currently targets the backend routes that exist: dashboard,
+marketplace, assets, wallet, purchases, payments, and wallet authentication.
+There is no REST controller for token operations, payment history, or
+traditional login/register in the current backend.
