@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { fetchCreditPackages, fetchWalletBalance, fetchWalletTransactions, purchasePackage } from "@/lib/api";
-import type { CreditPackage, WalletBalance, WalletTransaction } from "@/lib/api";
+import { ApiError, type CreditPackage, type WalletBalance, type WalletTransaction } from "@/lib/api";
+import { useCreditPackages, usePurchasePackage, useWalletBalance, useWalletTransactions } from "@/lib/queries";
 
 const fallbackPackages: CreditPackage[] = [
   {
@@ -144,33 +144,23 @@ function PackageCard({
 }
 
 export default function WalletPage() {
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
-  const [packages, setPackages] = useState<CreditPackage[]>(fallbackPackages);
-  const [transactions, setTransactions] = useState<DisplayTx[]>(fallbackTransactions);
   const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchWalletBalance()
-      .then(setBalance)
-      .catch(() => {
-        setBalance(fallbackBalance);
-        setNotice("Wallet balance unavailable right now. Showing fallback values.");
-      });
-    fetchCreditPackages().then(setPackages).catch(console.error);
-    fetchWalletTransactions().then((apiTxs) => setTransactions(apiTxs.map(toDisplayTx))).catch(console.error);
-  }, []);
+  const balanceQuery = useWalletBalance();
+  const packagesQuery = useCreditPackages();
+  const transactionsQuery = useWalletTransactions();
+  const purchaseMutation = usePurchasePackage();
+  const balance = balanceQuery.data;
+  const packages = packagesQuery.data ?? fallbackPackages;
+  const transactions = transactionsQuery.data?.map(toDisplayTx) ?? fallbackTransactions;
 
   const usagePercent = useMemo(() => balance?.usagePercent ?? 0, [balance]);
 
-  const handlePurchase = async (packageId: string) => {
-    try {
-      const result = await purchasePackage(packageId);
-      setNotice(result.message);
-      fetchWalletBalance().then(setBalance).catch(() => setBalance(fallbackBalance));
-      fetchWalletTransactions().then((apiTxs) => setTransactions(apiTxs.map(toDisplayTx))).catch(console.error);
-    } catch (err) {
-      setNotice(`Purchase failed: ${(err as Error).message}`);
-    }
+  const handlePurchase = (packageId: string) => {
+    setNotice(null);
+    purchaseMutation.mutate({ packageId }, {
+      onSuccess: (result) => setNotice(result.message),
+      onError: (error) => setNotice(`Purchase failed: ${error instanceof ApiError ? `${error.status} ${error.statusText}` : error.message}`),
+    });
   };
 
   return (
@@ -217,6 +207,7 @@ export default function WalletPage() {
             {notice}
           </div>
         ) : null}
+        {balanceQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Wallet balance unavailable right now. Showing fallback values. {balanceQuery.error instanceof ApiError ? `${balanceQuery.error.status} ${balanceQuery.error.statusText}` : balanceQuery.error?.message}</p>}
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <GlassCard className="md:col-span-2 overflow-hidden p-6">

@@ -34,13 +34,12 @@ export function useAsset(id: string | undefined) {
 export function useCreateAsset() {
   const queryClient = useQueryClient();
 
-  return useMutation<AssetDetail, Error, CreateAssetPayload & { creator?: string }>({
-    mutationFn: (payload) => {
-      const { creator: _creator, ...rest } = payload;
-      return createAsset(rest);
-    },
+  return useMutation<AssetDetail, Error, CreateAssetPayload>({
+    mutationFn: createAsset,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
