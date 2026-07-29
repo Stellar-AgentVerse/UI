@@ -4,7 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import NavBar from "@/components/agentverse/NavBar";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
-import { ApiError, type ActivityLogItem, type TopAsset } from "@/lib/api";
+import type { ActivityLogItem, TopAsset } from "@/lib/api";
 import { useActivityLogs, useDashboardMetrics, useTopAssets } from "@/lib/queries";
 
 const revenueData = [
@@ -108,12 +108,7 @@ export default function CreatorDashboard() {
   const metrics = metricsQuery.data;
   const topAssets = topAssetsQuery.data ?? fallbackTopAssets;
   const activityLogs = activityLogsQuery.data ?? fallbackLogs;
-  const errorMessage = [metricsQuery.error, topAssetsQuery.error, activityLogsQuery.error]
-    .filter(Boolean)
-    .map((e) => (e instanceof ApiError ? `${e.status} ${e.statusText}` : e?.message))
-    .filter(Boolean)
-    .join('; ');
-  const hasError = !!errorMessage;
+  const hasError = metricsQuery.isError || topAssetsQuery.isError || activityLogsQuery.isError;
 
   const revenueSeries = useMemo(() => revenueData.map((point) => point.value), []);
   const maxRevenue = Math.max(...revenueSeries);
@@ -145,7 +140,7 @@ export default function CreatorDashboard() {
       </div>
 
       <main className="page-shell pt-28 pb-24">
-        {hasError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load live dashboard data. {errorMessage}</p>}
+        {hasError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load live dashboard data.</p>}
         <header className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-4">
             <p className="section-kicker">Overview</p>

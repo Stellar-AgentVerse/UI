@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { ApiError, type CreditPackage, type WalletBalance, type WalletTransaction } from "@/lib/api";
+import type { CreditPackage, WalletBalance, WalletTransaction } from "@/lib/api";
 import { useCreditPackages, usePurchasePackage, useWalletBalance, useWalletTransactions } from "@/lib/queries";
 
 const fallbackPackages: CreditPackage[] = [
@@ -159,7 +159,7 @@ export default function WalletPage() {
     setNotice(null);
     purchaseMutation.mutate({ packageId }, {
       onSuccess: (result) => setNotice(result.message),
-      onError: (error) => setNotice(`Purchase failed: ${error instanceof ApiError ? `${error.status} ${error.statusText}` : error.message}`),
+      onError: (error) => setNotice(`Purchase failed: ${error.message}`),
     });
   };
 
@@ -207,7 +207,7 @@ export default function WalletPage() {
             {notice}
           </div>
         ) : null}
-        {balanceQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Wallet balance unavailable right now. Showing fallback values. {balanceQuery.error instanceof ApiError ? `${balanceQuery.error.status} ${balanceQuery.error.statusText}` : balanceQuery.error?.message}</p>}
+        {balanceQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Wallet balance unavailable right now. Showing fallback values.</p>}
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <GlassCard className="md:col-span-2 overflow-hidden p-6">

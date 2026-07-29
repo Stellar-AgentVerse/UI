@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { ApiError, type Category, type MarketplaceItem } from "@/lib/api";
+import type { Category, MarketplaceItem } from "@/lib/api";
 import { useCategories, useFeatured, useSearchAssets, useTrending } from "@/lib/queries";
 
 const fallbackFeatured: MarketplaceItem[] = [
@@ -179,7 +179,7 @@ export default function MarketplacePage() {
       </div>
 
       <main className="page-shell pt-28 pb-24">
-        {[featuredQuery.error, trendingQuery.error, categoriesQuery.error, searchQuery.error].filter(Boolean).length > 0 && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load marketplace data. {[featuredQuery.error, trendingQuery.error, categoriesQuery.error, searchQuery.error].filter(Boolean).map((e) => e instanceof ApiError ? `${e.status} ${e.statusText}` : e?.message).filter(Boolean).join('; ')}</p>}
+        {(featuredQuery.isError || trendingQuery.isError || categoriesQuery.isError || searchQuery.isError) && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load marketplace data.</p>}
         <section className="mb-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
             <p className="section-kicker">Marketplace</p>

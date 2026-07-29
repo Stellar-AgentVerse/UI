@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { ApiError, type AssetType } from "@/lib/api";
+import type { AssetType } from "@/lib/api";
 import { useAssetTypes, useCreateAsset, useTags } from "@/lib/queries";
 
 const fallbackTypes: AssetType[] = [
@@ -60,7 +60,7 @@ export default function PublishAsset() {
         onSuccess: (result) => { window.location.href = `/assets/${result.id}`; },
         onError: (error) => {
           setStatus("error");
-          setMessage(`Failed to create asset: ${error instanceof ApiError ? `${error.status} ${error.statusText}` : error.message}`);
+          setMessage(`Failed to create asset: ${error.message}`);
         },
       });
   };

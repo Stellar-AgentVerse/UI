@@ -2,29 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createPayment,
   createRefund,
-  fetchPayment,
   fetchPaymentProviders,
-  fetchPayments,
   verifyPayment,
   type CreatePaymentPayload,
   type CreateRefundPayload,
-  type Payment,
 } from '@/lib/api';
-
-export function usePayments(params?: { limit?: number; skip?: number; status?: string }) {
-  return useQuery<Payment[]>({
-    queryKey: ['payments', 'list', params],
-    queryFn: () => fetchPayments(params),
-  });
-}
-
-export function usePayment(id: string | undefined) {
-  return useQuery<Payment>({
-    queryKey: ['payments', id],
-    queryFn: () => fetchPayment(id!),
-    enabled: !!id,
-  });
-}
 
 export function usePaymentProviders() {
   return useQuery({

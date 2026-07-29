@@ -1,17 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchUserProfile,
   getAuthUser,
   getAuthToken,
-  login,
-  register,
   requestAuthChallenge,
-  setAuthToken,
   verifyWalletAuth,
   type AuthResult,
-  type LoginPayload,
-  type RegisterPayload,
-  type User,
 } from '@/lib/api';
 
 export function useAuthSession() {
@@ -41,43 +34,5 @@ export function useWalletAuth() {
 export function useAuthChallenge() {
   return useMutation({
     mutationFn: (publicKey: string) => requestAuthChallenge(publicKey),
-  });
-}
-
-export function useLogin() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: LoginPayload) => login(payload),
-    onSuccess: (result) => {
-      setAuthToken(result.token);
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('agentverse.auth.user', JSON.stringify(result.user));
-      }
-      queryClient.setQueryData(['auth', 'session'], result);
-    },
-  });
-}
-
-export function useRegister() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: RegisterPayload) => register(payload),
-    onSuccess: (result) => {
-      setAuthToken(result.token);
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('agentverse.auth.user', JSON.stringify(result.user));
-      }
-      queryClient.setQueryData(['auth', 'session'], result);
-    },
-  });
-}
-
-export function useUserProfile() {
-  return useQuery<User>({
-    queryKey: ['auth', 'profile'],
-    queryFn: fetchUserProfile,
-    enabled: !!getAuthToken(),
   });
 }

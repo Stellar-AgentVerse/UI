@@ -380,19 +380,6 @@ export function createAsset(payload: CreateAssetPayload) {
 }
 
 // ── Payments ──
-export interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  provider: string;
-  description?: string;
-  customer?: { email?: string; name?: string };
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface PaymentResult {
   success: boolean;
   transactionId: string;
@@ -420,14 +407,6 @@ export interface CreateRefundPayload {
   provider?: string;
 }
 
-export function fetchPayments(params?: { limit?: number; skip?: number; status?: string }) {
-  return request<Payment[]>('/api/payments', { params: params as Record<string, string | number | undefined> });
-}
-
-export function fetchPayment(id: string) {
-  return request<Payment>(`/api/payments/${id}`);
-}
-
 export function createPayment(payload: CreatePaymentPayload) {
   return request<PaymentResult>('/api/payments', {
     method: 'POST',
@@ -450,77 +429,4 @@ export function verifyPayment(transactionId: string, provider?: string) {
 
 export function fetchPaymentProviders() {
   return request<{ providers: string[] }>('/api/payments/providers');
-}
-
-// ── Tokens ──
-export interface TokenItem {
-  id: string;
-  name: string;
-  symbol: string;
-  price: number;
-  priceChange24h: number;
-  volume24h: number;
-  marketCap: number;
-  supply: number;
-  icon?: string;
-  description?: string;
-}
-
-export interface TokenTransaction {
-  id: string;
-  tokenId: string;
-  type: 'BUY' | 'SELL';
-  amount: number;
-  price: number;
-  total: number;
-  status: string;
-  createdAt: string;
-}
-
-export function fetchTokens() {
-  return request<TokenItem[]>('/api/tokens');
-}
-
-export function buyToken(tokenId: string, amount: number) {
-  return request<TokenTransaction>('/api/tokens/buy', {
-    method: 'POST',
-    body: JSON.stringify({ tokenId, amount }),
-  });
-}
-
-export function sellToken(tokenId: string, amount: number) {
-  return request<TokenTransaction>('/api/tokens/sell', {
-    method: 'POST',
-    body: JSON.stringify({ tokenId, amount }),
-  });
-}
-
-// ── Auth (traditional) ──
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export interface RegisterPayload {
-  email: string;
-  password: string;
-  displayName?: string;
-}
-
-export function login(payload: LoginPayload) {
-  return request<AuthResult>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function register(payload: RegisterPayload) {
-  return request<AuthResult>('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function fetchUserProfile() {
-  return request<User>('/api/users/me');
 }

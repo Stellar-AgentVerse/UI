@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import { ApiError } from "@/lib/api";
 import { connectFreighter, signAndSubmitPurchase } from "@/lib/stellar-purchase";
 import { useAsset, useConfirmPurchase, useCreatePurchaseIntent, usePurchaseAccess } from "@/lib/queries";
 
@@ -99,7 +98,7 @@ export default function AssetDetails() {
       </div>
 
       <main className="page-shell pt-28 pb-24">
-        {assetQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load this asset. {assetQuery.error instanceof ApiError ? `${assetQuery.error.status} ${assetQuery.error.statusText}` : assetQuery.error?.message}</p>}
+        {assetQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load this asset.</p>}
         <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <GlassCard className="relative overflow-hidden p-0">
             <div className="relative min-h-[32rem] overflow-hidden rounded-2xl">
