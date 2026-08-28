@@ -51,3 +51,18 @@ The client currently targets the backend routes that exist: dashboard,
 marketplace, assets, wallet, purchases, payments, and wallet authentication.
 There is no REST controller for token operations, payment history, or
 traditional login/register in the current backend.
+
+## Verification
+
+Run the application checks with:
+
+```bash
+npm run lint
+npm run type-check
+npm test
+npm run test:e2e
+```
+
+Unit and browser tests use mocked API responses and deterministic fixtures, so
+they do not require Freighter or a live Testnet account. Real wallet/Testnet
+evidence is kept in the manually triggered staging smoke workflow.
