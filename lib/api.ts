@@ -26,13 +26,30 @@ export class ApiError extends Error {
   }
 }
 
+/** Long enough for a validation list, short enough that a stack trace is not copy. */
+const MAX_SERVER_MESSAGE = 300;
+
 function extractServerMessage(details: unknown): string {
-  if (typeof details === 'string') return details.trim();
+  if (typeof details === 'string') return presentable(details);
   if (!details || typeof details !== 'object') return '';
   const message = (details as { message?: unknown }).message;
-  if (typeof message === 'string') return message;
-  if (Array.isArray(message)) return message.map(String).join('; ');
+  if (typeof message === 'string') return presentable(message);
+  if (Array.isArray(message)) return presentable(message.map(String).join('; '));
   return '';
+}
+
+/**
+ * A proxy or gateway answers with an HTML page, not with the backend's error
+ * shape. Rendering that verbatim puts markup in a heading, so anything that is
+ * not plainly a message is dropped in favour of the status-based fallback.
+ */
+function presentable(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.length > MAX_SERVER_MESSAGE) return '';
+  if (/^\s*[<{[]/.test(trimmed)) return '';
+  if (trimmed.includes('\n')) return '';
+  return trimmed;
 }
 
 /**
@@ -124,8 +141,10 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   let res: Response;
   try {
     res = await fetch(url, {
-      signal: fetchOpts.signal ?? timeoutSignal(),
       ...fetchOpts,
+      // After the spread, so a caller that passes `signal: undefined` cannot
+      // silently disable the deadline.
+      signal: fetchOpts.signal ?? timeoutSignal(),
       headers: {
         'Content-Type': 'application/json',
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),

@@ -66,6 +66,8 @@ export default function AssetDetailPage() {
           />
         ) : !isMarketV1AssetType(asset.type) ? (
           <UnsupportedAsset type={asset.type} name={asset.name} />
+        ) : asset.status !== 'PUBLISHED' ? (
+          <UnpublishedAsset status={asset.status} name={asset.name} />
         ) : (
           <PromptDetail asset={asset} />
         )}
@@ -85,6 +87,27 @@ function UnsupportedAsset({ type, name }: { type: string; name: string }) {
           Market V1 sells curated prompts only. This {assetTypeLabel(type).toLowerCase()} exists in
           the catalog, but there is no purchase or delivery path for it yet, so it cannot be bought
           here and is not offered for sale anywhere in the app.
+        </p>
+      </Callout>
+      <Link href="/marketplace" className="market-button-primary">
+        Browse the prompt catalog
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * The marketplace refuses to quote anything that is not published, so offering
+ * a Buy button here would only produce a 400 after the buyer has committed.
+ */
+function UnpublishedAsset({ status, name }: { status: string; name: string }) {
+  return (
+    <div className="max-w-2xl space-y-6">
+      <h1 className="section-title text-3xl md:text-4xl">{name}</h1>
+      <Callout tone="warning" title="This prompt is not on sale">
+        <p>
+          The marketplace lists it as {status.toLowerCase()} rather than published, and it will not
+          quote a purchase for it. It may become available later.
         </p>
       </Callout>
       <Link href="/marketplace" className="market-button-primary">

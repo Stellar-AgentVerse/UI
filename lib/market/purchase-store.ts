@@ -13,7 +13,7 @@
  * fails silently rather than throwing into a click handler.
  */
 
-import type { PurchaseRecord, PurchaseStage } from './purchase-state';
+import type { PriorAttempt, PurchaseRecord, PurchaseStage } from './purchase-state';
 
 const STORAGE_KEY = 'agentverse.market.purchases.v1';
 
@@ -21,6 +21,18 @@ const STORAGE_KEY = 'agentverse.market.purchases.v1';
 const MAX_RECORD_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type StoredMap = Record<string, PurchaseRecord>;
+
+/**
+ * Mirror of what this tab has written.
+ *
+ * Storage can be missing entirely (private mode, blocked site data) or refuse a
+ * write (quota). Without this mirror, `openAttempt` would read back nothing and
+ * mint a fresh idempotency key on every retry -- which is precisely the
+ * duplicate purchase this module exists to prevent. The mirror keeps a tab
+ * consistent with itself even when nothing can be persisted; only resumption
+ * after a reload is lost.
+ */
+const memory: StoredMap = {};
 
 function storage(): Storage | null {
   if (typeof window === 'undefined') return null;
@@ -51,6 +63,12 @@ function isRecord(value: unknown): value is PurchaseRecord {
 }
 
 function readAll(): StoredMap {
+  // This tab's own writes win: they are the only ones guaranteed to have
+  // survived, and losing them is what creates duplicates.
+  return { ...readStored(), ...memory };
+}
+
+function readStored(): StoredMap {
   const store = storage();
   if (!store) return {};
   let raw: string | null;
@@ -81,6 +99,7 @@ function readAll(): StoredMap {
 }
 
 function writeAll(map: StoredMap): void {
+  for (const [key, value] of Object.entries(map)) memory[key] = value;
   const store = storage();
   if (!store) return;
   try {
@@ -101,9 +120,21 @@ export function readPurchaseRecord(
 }
 
 export function savePurchaseRecord(record: PurchaseRecord): PurchaseRecord {
-  const next: PurchaseRecord = { ...record, updatedAt: new Date().toISOString() };
   const map = readAll();
-  map[recordKey(next.buyerPublicKey, next.assetId)] = next;
+  const key = recordKey(record.buyerPublicKey, record.assetId);
+  const existing = map[key];
+
+  // Settlement is the one irreversible fact in this flow, and it can be written
+  // by a different tab than the one that is running. A second tab that signed
+  // the same purchase will lose its transaction to a sequence-number clash and
+  // then try to record a failure -- which must not overwrite a purchase the
+  // marketplace has already settled.
+  if (existing?.stage === 'settled' && record.stage !== 'settled') {
+    return existing;
+  }
+
+  const next: PurchaseRecord = { ...record, updatedAt: new Date().toISOString() };
+  map[key] = next;
   writeAll(map);
   return next;
 }
@@ -119,8 +150,10 @@ export function clearPurchaseRecord(
   buyerPublicKey: string,
   assetId: string,
 ): void {
+  const key = recordKey(buyerPublicKey, assetId);
   const map = readAll();
-  delete map[recordKey(buyerPublicKey, assetId)];
+  delete map[key];
+  delete memory[key];
   writeAll(map);
 }
 
@@ -166,10 +199,39 @@ export function openAttempt(
     buyerPublicKey,
     idempotencyKey: newIdempotencyKey(),
     stage: 'idle',
+    priorAttempts: archive(existing),
     createdAt: now,
     updatedAt: now,
   };
   return savePurchaseRecord(record);
+}
+
+/** Most recent first, capped so a stuck buyer cannot grow storage without bound. */
+const MAX_PRIOR_ATTEMPTS = 3;
+
+/**
+ * Carry an attempt's references into the next one.
+ *
+ * A quote that expired after the ledger already succeeded leaves a real
+ * payment behind. Overwriting the record would delete the purchase id and
+ * transaction hash the buyer needs to have that payment reconciled, so an
+ * attempt that got as far as a purchase id or a hash is archived.
+ */
+function archive(previous: PurchaseRecord | null): PriorAttempt[] | undefined {
+  if (!previous) return undefined;
+  const carried = previous.priorAttempts ?? [];
+  if (!previous.purchaseId && !previous.transactionHash) {
+    return carried.length ? carried.slice(0, MAX_PRIOR_ATTEMPTS) : undefined;
+  }
+  const entry: PriorAttempt = {
+    idempotencyKey: previous.idempotencyKey,
+    purchaseId: previous.purchaseId,
+    transactionHash: previous.transactionHash,
+    networkPassphrase: previous.networkPassphrase,
+    stage: previous.stage,
+    at: previous.updatedAt,
+  };
+  return [entry, ...carried].slice(0, MAX_PRIOR_ATTEMPTS);
 }
 
 export function setStage(

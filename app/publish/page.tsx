@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
@@ -139,8 +140,11 @@ export default function PublishAsset() {
 
             <div className="mt-8 space-y-6">
               <div>
-                <label className="section-kicker mb-3 block">Asset name</label>
+                <label htmlFor="asset-name" className="section-kicker mb-3 block">
+                  Asset name
+                </label>
                 <input
+                  id="asset-name"
                   className="input-surface"
                   placeholder="e.g. Neural-Sentience-v1"
                   type="text"
@@ -150,8 +154,14 @@ export default function PublishAsset() {
               </div>
 
               <div>
-                <label className="section-kicker mb-3 block">Metadata tags</label>
-                <div className="flex flex-wrap gap-3">
+                <p id="metadata-tags-label" className="section-kicker mb-3 block">
+                  Metadata tags
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="metadata-tags-label"
+                  className="flex flex-wrap gap-3"
+                >
                   {availableTags.map((tag) => {
                     const active = selectedTags.includes(tag);
                     return (
@@ -202,10 +212,14 @@ export default function PublishAsset() {
 
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/10 bg-background/85 backdrop-blur-2xl">
         <div className="page-shell flex items-center justify-between gap-4 py-4">
-          <button className="focus-ring inline-flex items-center gap-2 rounded-full border border-outline-variant/25 px-4 py-3 text-sm text-on-surface-variant transition-colors hover:border-accent/25 hover:text-primary">
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          {/* Was a button with no handler: the way out of the flow has to
+              actually go somewhere. */}
+          <Link
+            href="/dashboard"
+            className="focus-ring inline-flex min-h-[44px] items-center gap-2 rounded-full border border-outline-variant/25 px-4 py-3 text-sm text-on-surface-variant transition-colors hover:border-accent/25 hover:text-primary"
+          >
             Cancel
-          </button>
+          </Link>
 
           <button
             onClick={handleCreate}

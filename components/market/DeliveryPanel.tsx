@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Callout, CopyableValue } from './primitives';
 import { LockIcon } from './icons';
 import { toServerFailure, type EncryptedDeliveryEnvelope } from '@/lib/api';
@@ -29,7 +29,6 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
   const access = usePurchaseAccessRecord(purchaseId);
   const delivery = useDeliveryResult(purchaseId);
   const [attempts, setAttempts] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const state = delivery.isError
     ? mapDeliveryFailure(toServerFailure(delivery.error))
@@ -37,19 +36,23 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
   const isPending = state?.kind === 'pending';
   const pollingActive = isPending && attempts < MAX_POLL_ATTEMPTS;
 
+  // Destructured because react-query keeps `refetch` referentially stable,
+  // while the query object itself is a new value on every render: depending on
+  // the object would clear the pending timer on any unrelated re-render and
+  // polling would never fire.
+  const { refetch: refetchDelivery } = delivery;
+
   // Bounded polling. A delivery result that has not appeared within the budget
   // is still not a failure -- the buyer just gets an explicit control instead
   // of an indefinite spinner.
   useEffect(() => {
     if (!pollingActive) return;
-    timer.current = setTimeout(() => {
+    const handle = setTimeout(() => {
       setAttempts((current) => current + 1);
-      void delivery.refetch();
+      void refetchDelivery();
     }, POLL_INTERVAL_MS);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [delivery, pollingActive, attempts]);
+    return () => clearTimeout(handle);
+  }, [refetchDelivery, pollingActive, attempts]);
 
   const checkAgain = useCallback(() => {
     setAttempts(0);
@@ -105,8 +108,11 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
           }
         >
           <p>
-            The payment is settled and your access is recorded. The marketplace has not published a
-            delivery result for this purchase yet, so there is nothing to show at this moment.
+            {access.isSuccess
+              ? 'The payment is settled and your access is recorded. '
+              : 'The payment is settled. '}
+            The marketplace has not published a delivery result for this purchase yet, so there is
+            nothing to show at this moment.
           </p>
           <p className="mt-2">
             {pollingActive
@@ -171,7 +177,7 @@ function EncryptedReceipt({
     <div className="space-y-3 rounded-2xl border border-accent/25 bg-accent/8 p-4">
       <p className="inline-flex items-center gap-2 font-medium text-accent">
         <LockIcon className="h-5 w-5" />
-        Delivered, end-to-end encrypted
+        Delivered, encrypted by the marketplace
       </p>
       <p className="text-sm leading-relaxed text-on-surface-variant">
         The marketplace has produced your result and authenticated it to your wallet. It is sealed

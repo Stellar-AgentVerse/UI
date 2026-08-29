@@ -66,14 +66,29 @@ export async function submitSignedTransaction(
     };
   }
 
+  // The hash is a pure function of the signed envelope, so it is known before
+  // the network is touched. That matters: if the node accepts the transaction
+  // and the response is then lost, this is the only way to find out what
+  // happened instead of guessing -- and guessing "not submitted" is how a
+  // buyer ends up paying twice.
+  let localHash: string | undefined;
+  try {
+    localHash = transaction.hash().toString('hex');
+  } catch {
+    localHash = undefined;
+  }
+
   let response;
   try {
     response = await server().sendTransaction(transaction);
   } catch (error) {
     return {
+      hash: localHash,
       outcome: {
-        kind: 'retry',
-        message: `The Stellar RPC node could not be reached (${describe(error)}). Your transaction has not been submitted yet.`,
+        kind: localHash ? 'unknown' : 'retry',
+        message: localHash
+          ? `The Stellar RPC node did not answer (${describe(error)}). The transaction may or may not have reached the network, so its hash is being checked against the ledger.`
+          : `The Stellar RPC node could not be reached (${describe(error)}).`,
       },
     };
   }

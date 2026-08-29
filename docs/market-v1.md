@@ -66,16 +66,16 @@ can be reasoned about without a browser, a wallet or a backend.
 | Stage | Meaning | What the buyer is offered |
 | --- | --- | --- |
 | `idle` | Nothing started | Buy |
-| `creating_intent` | Quoting | — |
+| `creating_intent` | Quoting | Nothing; the action is disabled while it runs |
 | `awaiting_signature` | Quote ready, wallet must approve | Resume |
-| `submitting` | Handing the envelope to RPC | — |
+| `submitting` | Handing the envelope to RPC | Nothing; the action is disabled while it runs |
 | `awaiting_ledger` | Submitted, no ledger yet — **not a failure** | Check the ledger again |
 | `confirming` | Ledger succeeded, marketplace verifying | Confirm again |
 | `settled` | Verified. The only success | View delivery |
 | `submission_rejected` | RPC refused it; no ledger saw it | Try again |
 | `chain_failed` | A ledger executed it and it failed | Try again |
 | `verification_failed` | Marketplace closed the intent | Contact support |
-| `expired` | Quote window closed | New attempt |
+| `expired` | Quote window closed | Try again, which mints a new quote |
 | `replay_blocked` | Hash already bound elsewhere | Contact support |
 
 ## Why a retry cannot become a second purchase
@@ -120,9 +120,10 @@ rendered without exposing anything.
 ## Support and reconciliation
 
 Every purchase surfaces its references as soon as they exist — purchase id,
-idempotency key, transaction hash with an explorer receipt, contract id,
-network, and the API request id from `x-request-id` — each individually
-copyable. `NEXT_PUBLIC_SUPPORT_URL` sets the support destination; if it is unset
+idempotency key, transaction hash with an explorer receipt, contract id and
+network — each individually copyable. When the marketplace reports a problem,
+the API request id from the `x-request-id` header is shown alongside them, so a
+support request can be tied to a specific server-side event. `NEXT_PUBLIC_SUPPORT_URL` sets the support destination; if it is unset
 or malformed the UI falls back to this repository's issue tracker, which is a
 real destination. No placeholder address is ever rendered.
 

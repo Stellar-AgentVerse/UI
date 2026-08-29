@@ -91,8 +91,24 @@ export interface PurchaseRecord {
   /** ISO timestamp; after this the intent can no longer be signed. */
   expiresAt?: string;
   lastError?: PurchaseError;
+  /**
+   * References from earlier attempts at the same asset. A buyer who paid on
+   * chain and then had to start a fresh quote still needs the old purchase id
+   * and transaction hash to get the first payment reconciled, so starting again
+   * archives them instead of overwriting them.
+   */
+  priorAttempts?: PriorAttempt[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PriorAttempt {
+  idempotencyKey: string;
+  purchaseId?: string;
+  transactionHash?: string;
+  networkPassphrase?: string;
+  stage: PurchaseStage;
+  at: string;
 }
 
 export interface StageDescriptor {
@@ -185,7 +201,7 @@ const STAGES: Record<PurchaseStage, StageDescriptor> = {
   expired: {
     label: 'Purchase intent expired',
     detail:
-      'The quote window closed before the payment settled. Start a new attempt to get a fresh quote.',
+      'The marketplace closed the quote before it accepted the payment. Your transaction may already be on chain, so check the receipt below and contact support before paying again — a new attempt is a new payment.',
     tone: 'warning',
     isTerminal: true,
     isPending: false,
@@ -288,6 +304,12 @@ export type SubmitOutcome =
   | { kind: 'accepted' }
   /** RPC is busy or rate limited; the same envelope can be resent. */
   | { kind: 'retry'; message: string }
+  /**
+   * RPC never answered. The transaction may or may not have reached the
+   * network, and saying "not submitted" here is how a buyer ends up paying
+   * twice. The only safe reading is to go and look at the ledger.
+   */
+  | { kind: 'unknown'; message: string }
   /** RPC refused the envelope outright. */
   | { kind: 'rejected'; message: string };
 
@@ -437,8 +459,15 @@ export function mapConfirmFailure(
 }
 
 export type IntentOutcome =
+  /** The marketplace says this buyer already owns the prompt. */
   | { kind: 'settled' }
-  | { kind: 'stage'; stage: PurchaseStage; error: PurchaseError }
+  /**
+   * The quote was refused. Nothing was signed and no transaction exists, so
+   * this never persists a terminal purchase stage: the copy for those stages
+   * talks about a payment that may be on chain, and here none can be.
+   * `needsNewKey` marks the one refusal a fresh idempotency key resolves.
+   */
+  | { kind: 'refused'; error: PurchaseError; needsNewKey: boolean }
   | { kind: 'retry'; error: PurchaseError };
 
 export function mapIntentFailure(
@@ -453,8 +482,10 @@ export function mapIntentFailure(
   }
   if (status === 409 || status === 400 || status === 404) {
     return {
-      kind: 'stage',
-      stage: 'verification_failed',
+      kind: 'refused',
+      // "Idempotency key is already bound to another asset" is the only one a
+      // buyer can clear themselves, by starting a genuinely new attempt.
+      needsNewKey: status === 409 && mentions(message, 'already bound'),
       error: purchaseError(stage, 'server', message, false, requestId, now),
     };
   }
@@ -501,7 +532,10 @@ export function mapDeliveryFailure(failure: ServerFailure): DeliveryState {
   return {
     kind: 'error',
     message,
-    retryable: status === 0 || status >= 500,
+    // 429 comes from the global throttler, and polling for a delivery result is
+    // the request pattern most likely to trip it. Waiting and asking again is
+    // exactly the right response, so it must not render as terminal.
+    retryable: status === 0 || status === 429 || status >= 500,
     requestId,
   };
 }

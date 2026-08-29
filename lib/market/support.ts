@@ -9,12 +9,22 @@
 const FALLBACK_SUPPORT_URL = 'https://github.com/Stellar-AgentVerse/UI/issues';
 
 export function supportUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim();
-  if (configured && /^https:\/\/[^\s]+$/i.test(configured)) return configured;
-  return FALLBACK_SUPPORT_URL;
+  return httpsOrigin(process.env.NEXT_PUBLIC_SUPPORT_URL) ?? FALLBACK_SUPPORT_URL;
 }
 
-/** True when the operator has configured a real support destination. */
-export function hasDedicatedSupportChannel(): boolean {
-  return supportUrl() !== FALLBACK_SUPPORT_URL;
+/**
+ * Parse rather than pattern-match. A regex accepts strings the URL parser
+ * rejects, and rendering an unusable address is the dead end this gate exists
+ * to prevent.
+ */
+function httpsOrigin(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'https:' || !url.hostname) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }

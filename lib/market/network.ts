@@ -53,10 +53,21 @@ export function explorerTransactionUrl(
   return `${base}/explorer/${id}/tx/${transactionHash.toLowerCase()}`;
 }
 
+const DEFAULT_EXPLORER = 'https://stellar.expert';
+
+/**
+ * Parsed rather than pattern-matched: a regex accepts strings the URL parser
+ * rejects, and a malformed override would produce a link that goes nowhere.
+ * Only the origin is used, since the path is built here.
+ */
 function explorerBase(): string {
   const configured = process.env.NEXT_PUBLIC_STELLAR_EXPLORER_URL?.trim();
-  if (configured && /^https:\/\/[^\s]+$/i.test(configured)) {
-    return configured.replace(/\/+$/, '');
+  if (!configured) return DEFAULT_EXPLORER;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== 'https:' || !url.hostname) return DEFAULT_EXPLORER;
+    return url.origin;
+  } catch {
+    return DEFAULT_EXPLORER;
   }
-  return 'https://stellar.expert';
 }

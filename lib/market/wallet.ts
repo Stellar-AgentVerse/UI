@@ -185,7 +185,17 @@ export async function signPurchaseTransaction(
 function toSignatureBytes(signedMessage: string | Uint8Array): Uint8Array {
   if (typeof signedMessage !== 'string') return new Uint8Array(signedMessage);
   if (/^[0-9a-f]{128}$/i.test(signedMessage)) return fromHex(signedMessage);
-  return fromBase64(signedMessage);
+  try {
+    return fromBase64(signedMessage);
+  } catch {
+    // atob throws on anything that is not base64. Letting that escape would
+    // surface as a generic network error and send the buyer looking in the
+    // wrong place.
+    throw new WalletError(
+      'Freighter returned a signature in a format this app does not recognise.',
+      'unknown',
+    );
+  }
 }
 
 function fromHex(value: string): Uint8Array {

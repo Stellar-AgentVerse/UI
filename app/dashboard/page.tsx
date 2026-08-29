@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { TopAsset } from '@/lib/api';
 import NavBar from '@/components/agentverse/NavBar';
 import Footer from '@/components/agentverse/Footer';
 import GlassCard from '@/components/agentverse/GlassCard';
@@ -16,6 +17,35 @@ const NAV_LINKS = [
   { label: 'Wallet', href: '/wallet' },
   { label: 'Dashboard', href: '/dashboard', active: true },
 ];
+
+function TopAssetCard({ asset }: { asset: TopAsset }) {
+  const body = (
+    <>
+      <p className="font-semibold text-primary">{asset.name}</p>
+      <p className="text-label-sm uppercase tracking-[0.16em] text-on-surface-variant">
+        {asset.category}
+      </p>
+      <p className="mt-3 text-sm text-on-surface">{asset.revenue}</p>
+      <p className="text-sm text-on-surface-variant">{asset.calls}</p>
+    </>
+  );
+
+  if (!asset.assetId) {
+    return (
+      <GlassCard className="p-4" hover={false}>
+        {body}
+      </GlassCard>
+    );
+  }
+  return (
+    <Link
+      href={`/assets/${asset.assetId}`}
+      className="focus-ring glass-card glass-card-hover block rounded-2xl p-4"
+    >
+      {body}
+    </Link>
+  );
+}
 
 function MetricCard({
   label,
@@ -43,6 +73,41 @@ export default function CreatorDashboard() {
   const topAssetsQuery = useTopAssets(creator);
   const activityLogsQuery = useActivityLogs(creator);
   const metrics = metricsQuery.data;
+
+  // Without a creator the endpoints answer with marketplace-wide figures, and
+  // this page presents them as the account's own. Ask for a wallet first rather
+  // than labelling someone else's numbers as yours.
+  if (!creator) {
+    return (
+      <div className="min-h-screen overflow-x-hidden">
+        <NavBar links={NAV_LINKS} rightContent={<WalletBar />} />
+        <main className="page-shell pt-28 pb-24">
+          <header className="mb-8 max-w-3xl space-y-4">
+            <p className="section-kicker">Overview</p>
+            <h1 className="section-title text-4xl md:text-5xl">Creator dashboard</h1>
+          </header>
+          <div className="mb-6 space-y-4">
+            <SessionNotice />
+          </div>
+          <EmptyState
+            headingLevel="h2"
+            title="Connect a wallet to see your dashboard"
+            description="These figures are scoped to one creator account. Without a connected wallet the marketplace would answer with platform-wide totals, which are not yours."
+            action={
+              <button
+                type="button"
+                className="market-button-primary"
+                onClick={() => void session.connect()}
+              >
+                Connect Freighter
+              </button>
+            }
+          />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -136,14 +201,9 @@ export default function CreatorDashboard() {
             <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {(topAssetsQuery.data ?? []).map((asset) => (
                 <li key={`${asset.name}-${asset.assetId}`}>
-                  <GlassCard className="p-4" hover={false}>
-                    <p className="font-semibold text-primary">{asset.name}</p>
-                    <p className="text-label-sm uppercase tracking-[0.16em] text-on-surface-variant">
-                      {asset.category}
-                    </p>
-                    <p className="mt-3 text-sm text-on-surface">{asset.revenue}</p>
-                    <p className="text-sm text-on-surface-variant">{asset.calls}</p>
-                  </GlassCard>
+                  {/* Linked only when the marketplace supplied an id; a link to
+                      /assets/ with nothing after it is a dead end. */}
+                  <TopAssetCard asset={asset} />
                 </li>
               ))}
             </ul>
@@ -168,7 +228,14 @@ export default function CreatorDashboard() {
               description="The marketplace has no activity entries for this account."
             />
           ) : (
-            <GlassCard className="overflow-x-auto" hover={false}>
+            // Focusable because it scrolls: without a tab stop, the columns past
+            // the viewport edge are unreachable from the keyboard (WCAG 2.1.1).
+            <div
+              tabIndex={0}
+              role="region"
+              aria-labelledby="activity-heading"
+              className="focus-ring glass-card overflow-x-auto rounded-2xl"
+            >
               <table className="w-full min-w-[36rem] border-collapse text-left">
                 <caption className="sr-only">Recent marketplace activity</caption>
                 <thead className="bg-white/3">
@@ -192,7 +259,7 @@ export default function CreatorDashboard() {
                   ))}
                 </tbody>
               </table>
-            </GlassCard>
+            </div>
           )}
         </section>
       </main>

@@ -19,11 +19,11 @@ import {
   mapConfirmFailure,
   mapIntentFailure,
   nextAction,
-  requiresNewAttempt,
   type PurchaseRecord,
   type PurchaseStage,
 } from '@/lib/market/purchase-state';
 import {
+  clearPurchaseRecord,
   openAttempt,
   readPurchaseRecord,
   savePurchaseRecord,
@@ -66,6 +66,7 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
   const [note, setNote] = useState<string | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [errorXdr, setErrorXdr] = useState<string | undefined>(undefined);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
 
   const abort = useRef<AbortController | null>(null);
   const statusHeading = useRef<HTMLParagraphElement | null>(null);
@@ -90,6 +91,20 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
     },
     [],
   );
+
+  // Move focus to the status text whenever the stage changes, so the outcome is
+  // where the keyboard lands. Doing this in an effect rather than in guard()'s
+  // finally matters: settling swaps the whole panel for a different branch, and
+  // the node guard() held has been unmounted by then.
+  const stageForFocus = record?.stage ?? 'idle';
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    statusHeading.current?.focus();
+  }, [stageForFocus]);
 
   const commit = useCallback(
     (next: PurchaseRecord, stage: PurchaseStage, patch: Partial<PurchaseRecord> = {}) => {
@@ -157,15 +172,15 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
       const controller = new AbortController();
       abort.current = controller;
 
-      setNote('Waiting for a ledger to close over the transaction…');
+      setNote('Waiting for a ledger to close over the transaction. This is normal.');
       const outcome = await pollForLedgerResult(state.transactionHash!, {
         signal: controller.signal,
-        onAttempt: (_attempt, elapsedMs) => {
-          setNote(
-            `Still waiting for the ledger — ${Math.round(elapsedMs / 1000)}s elapsed. This is normal.`,
-          );
-        },
+        // The elapsed counter is rendered outside the live region: announcing
+        // it every two seconds would produce dozens of interruptions during a
+        // wait that has not changed in any way the buyer needs to hear about.
+        onAttempt: (_attempt, elapsedMs) => setElapsedMs(elapsedMs),
       });
+      setElapsedMs(null);
 
       if (controller.signal.aborted) return;
 
@@ -244,10 +259,20 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
         await watchLedger(commit(state, 'awaiting_ledger', { transactionHash: submission.hash }));
         return;
       }
-      if (submission.outcome.kind === 'retry') {
+      if (submission.outcome.kind === 'unknown' && submission.hash) {
         setFailure({
           message: submission.outcome.message,
-          detail: 'Nothing has been submitted. Try again in a moment.',
+          detail:
+            'Do not pay again until this resolves: a transaction that did reach the network would still settle.',
+        });
+        await watchLedger(commit(state, 'awaiting_ledger', { transactionHash: submission.hash }));
+        return;
+      }
+      if (submission.outcome.kind === 'retry' || submission.outcome.kind === 'unknown') {
+        setFailure({
+          message: submission.outcome.message,
+          detail:
+            'The node refused the request before reading the transaction, so nothing was submitted. Try again in a moment.',
         });
         commit(state, 'awaiting_signature');
         setNote(null);
@@ -291,16 +316,28 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
         const outcome = mapIntentFailure(toServerFailure(error));
         setNote(null);
         if (outcome.kind === 'settled') {
+          // The marketplace says this buyer already owns the prompt. The quote
+          // failed, so there is no purchase id here; the settled view handles
+          // that case explicitly rather than rendering an empty panel.
           commit(state, 'settled');
           return;
         }
         if (outcome.error.kind === 'auth') session.invalidate();
-        commit(state, outcome.kind === 'retry' ? 'idle' : outcome.stage, {
-          lastError: outcome.error,
-        });
+        // No transaction exists yet, so the stage stays non-terminal: the
+        // terminal copy talks about a payment that may be on chain, and none
+        // can be.
+        commit(state, 'idle', { lastError: outcome.error });
+        if (outcome.kind === 'refused' && outcome.needsNewKey) {
+          clearPurchaseRecord(state.buyerPublicKey, state.assetId);
+          setRecord(null);
+        }
         setFailure({
           message: outcome.error.message,
           requestId: outcome.error.requestId,
+          detail:
+            outcome.kind === 'refused' && outcome.needsNewKey
+              ? 'This browser has been reset for this prompt; try again to get a fresh quote.'
+              : undefined,
         });
         return;
       }
@@ -328,7 +365,6 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
       } finally {
         running.current = false;
         setBusy(false);
-        statusHeading.current?.focus();
       }
     },
     [],
@@ -348,9 +384,46 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
   if (stage === 'settled' && record?.purchaseId) {
     return (
       <div className="space-y-4">
-        <StatusBadge tone="success" label={descriptor.label} />
-        <p className="text-sm leading-relaxed text-on-surface-variant">{descriptor.detail}</p>
+        <div role="status" aria-live="polite">
+          <StatusBadge tone="success" label={descriptor.label} />
+          <p
+            ref={statusHeading}
+            tabIndex={-1}
+            className="focus-ring mt-3 rounded text-sm leading-relaxed text-on-surface-variant"
+          >
+            {descriptor.detail}
+          </p>
+        </div>
         <DeliveryPanel purchaseId={record.purchaseId} />
+        <SupportReferences record={record} />
+      </div>
+    );
+  }
+
+  // The marketplace refused the quote because this buyer already owns the
+  // prompt, but the quote is also where the purchase id would have come from.
+  // That happens after buying on another device, or in this browser long enough
+  // ago that the local record was pruned. Without an id there is no delivery to
+  // fetch, so say that plainly instead of rendering an empty success.
+  if (stage === 'settled' && record && !record.purchaseId) {
+    return (
+      <div className="space-y-4">
+        <div role="status" aria-live="polite">
+          <StatusBadge tone="success" label="You already own this prompt" />
+          <p ref={statusHeading} tabIndex={-1} className="focus-ring sr-only">
+            You already own this prompt.
+          </p>
+        </div>
+        <Callout tone="idle" title="This browser has no record of the purchase">
+          <p>
+            The marketplace will not quote this prompt again because your account has already bought
+            it. The delivery is tied to the original purchase, and its id is not stored here, so it
+            cannot be opened from this browser.
+          </p>
+          <p className="mt-2">
+            Open it from the device you bought it on, or ask support to look it up from your account.
+          </p>
+        </Callout>
         <SupportReferences record={record} />
       </div>
     );
@@ -405,19 +478,22 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
             tabIndex={-1}
             className="focus-ring mt-3 rounded text-sm leading-relaxed text-on-surface-variant"
           >
-            {note ?? descriptor.detail}
+            {failure ? failure.message : (note ?? descriptor.detail)}
           </p>
         </div>
         {busy ? (
-          <p className="mt-2 inline-flex items-center gap-2 text-sm text-secondary">
+          <p aria-hidden="true" className="mt-2 inline-flex items-center gap-2 text-sm text-secondary">
             <SpinnerIcon className="h-4 w-4" />
-            Working…
+            {elapsedMs === null ? 'Working…' : `${Math.round(elapsedMs / 1000)}s elapsed`}
           </p>
         ) : null}
       </div>
 
+      {/* Not a live region: its title is already inside the status region
+          above, and two live regions announcing the same failure is one
+          announcement too many. */}
       {failure ? (
-        <Callout tone={descriptor.tone === 'error' ? 'error' : 'warning'} title={failure.message} live="assertive">
+        <Callout tone={descriptor.tone === 'error' ? 'error' : 'warning'} title={failure.message}>
           {failure.detail ? <p>{failure.detail}</p> : null}
           {failure.requestId ? (
             <p className="mt-2 font-label text-xs">Reference: {failure.requestId}</p>
@@ -477,9 +553,10 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
           <button
             type="button"
             className="market-button-primary w-full"
-            disabled={!consent || busy || (network ? !network.isSupported : false)}
+            disabled={!consent || (network ? !network.isSupported : false)}
+            aria-busy={busy}
             onClick={() =>
-              void guard(() => startPurchase({ startNew: requiresNewAttempt(stage) }))
+              void guard(() => startPurchase({ startNew: action === 'new_attempt' }))
             }
           >
             <LockIcon className="h-4 w-4" />
@@ -495,7 +572,7 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
         <button
           type="button"
           className="market-button-primary w-full"
-          disabled={busy}
+          aria-busy={busy}
           onClick={() => void guard(() => startPurchase())}
         >
           Resume purchase
@@ -504,7 +581,7 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
         <button
           type="button"
           className="market-button-secondary w-full"
-          disabled={busy}
+          aria-busy={busy}
           onClick={() =>
             void guard(async () => {
               if (record) await watchLedger(record);
@@ -517,7 +594,7 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
         <button
           type="button"
           className="market-button-primary w-full"
-          disabled={busy}
+          aria-busy={busy}
           onClick={() =>
             void guard(async () => {
               if (record) await confirmWithBackend(record);

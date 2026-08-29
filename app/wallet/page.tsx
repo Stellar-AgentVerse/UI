@@ -55,6 +55,7 @@ export default function WalletPage() {
 
         {!address ? (
           <EmptyState
+            headingLevel="h2"
             title="No wallet connected"
             description="Connect Freighter to see the balances and transactions the marketplace holds for your account."
             action={

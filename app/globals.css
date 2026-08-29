@@ -44,6 +44,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* The navigation bar is fixed and 5rem tall; without this, a control scrolled
+     into view by keyboard focus lands underneath it (WCAG 2.4.11). */
+  scroll-padding-top: 6rem;
 }
 
 body {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 interface NavLink {
   label: string;
@@ -30,6 +30,7 @@ export default function NavBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const pathname = usePathname();
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
 
   // Close on navigation, so the panel never covers the page the buyer landed
   // on. Adjusting state during render is React's own answer here: an effect
@@ -43,7 +44,10 @@ export default function NavBar({
   useEffect(() => {
     if (!menuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      // Focus would otherwise be left on a node that just became hidden.
+      toggleRef.current?.focus();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -96,6 +100,7 @@ export default function NavBar({
 
         <button
           type="button"
+          ref={toggleRef}
           className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-full text-primary md:hidden"
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}

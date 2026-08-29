@@ -193,14 +193,17 @@ export function EmptyState({
   title,
   description,
   action,
+  headingLevel: Heading = 'h3',
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  /** So an empty state can sit directly under an h1 without skipping a level. */
+  headingLevel?: 'h2' | 'h3';
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-outline-variant/30 bg-white/3 px-6 py-12 text-center">
-      <h3 className="font-heading text-xl font-semibold text-primary">{title}</h3>
+      <Heading className="font-heading text-xl font-semibold text-primary">{title}</Heading>
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-on-surface-variant">
         {description}
       </p>

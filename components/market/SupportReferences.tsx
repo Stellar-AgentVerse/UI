@@ -4,7 +4,7 @@ import { CopyableValue } from './primitives';
 import { ExternalLinkIcon } from './icons';
 import { describeNetwork, explorerTransactionUrl } from '@/lib/market/network';
 import { supportUrl } from '@/lib/market/support';
-import type { PurchaseRecord } from '@/lib/market/purchase-state';
+import { describeStage, type PurchaseRecord } from '@/lib/market/purchase-state';
 
 /**
  * Everything an operator needs to reconcile one purchase by hand.
@@ -64,6 +64,36 @@ export function SupportReferences({
           ? ' No explorer link is shown because the network could not be identified.'
           : ''}
       </p>
+
+      {record.priorAttempts?.length ? (
+        <div className="space-y-3 rounded-2xl border border-outline-variant/20 bg-white/4 p-3">
+          <p className="text-sm text-on-surface-variant">
+            Earlier attempts at this prompt. They are kept because an attempt can leave a real
+            payment on chain even when the marketplace did not settle it.
+          </p>
+          {record.priorAttempts.map((attempt) => (
+            <div key={attempt.idempotencyKey} className="grid gap-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                {describeStage(attempt.stage).label} ·{' '}
+                {new Date(attempt.at).toLocaleString()}
+              </p>
+              {attempt.purchaseId ? (
+                <CopyableValue label="Purchase ID" value={attempt.purchaseId} />
+              ) : null}
+              {attempt.transactionHash ? (
+                <CopyableValue
+                  label="Transaction hash"
+                  value={attempt.transactionHash}
+                  href={explorerTransactionUrl(
+                    attempt.transactionHash,
+                    attempt.networkPassphrase,
+                  )}
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <a
         className="focus-ring inline-flex min-h-[44px] items-center gap-2 rounded-full text-sm font-medium text-accent underline underline-offset-4"
