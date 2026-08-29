@@ -53,6 +53,12 @@ export default function NavBar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
+  // `active` styles the section a page belongs to, which is not the same claim
+  // as aria-current="page": on /assets/<id> the Marketplace link is highlighted
+  // but it is not the current page.
+  const currentPage = (link: NavLink) =>
+    link.href === pathname ? ('page' as const) : undefined;
+
   const linkClass = (link: NavLink) =>
     `rounded-full px-3 py-2 text-sm transition-all duration-200 focus-ring ${
       link.active
@@ -89,7 +95,7 @@ export default function NavBar({
             <Link
               key={link.href}
               href={link.href}
-              aria-current={link.active ? "page" : undefined}
+              aria-current={currentPage(link)}
               className={linkClass(link)}
             >
               {link.label}
@@ -139,7 +145,7 @@ export default function NavBar({
             <Link
               key={link.href}
               href={link.href}
-              aria-current={link.active ? "page" : undefined}
+              aria-current={currentPage(link)}
               className={`${linkClass(link)} min-h-[44px] leading-[28px]`}
             >
               {link.label}

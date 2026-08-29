@@ -15,14 +15,17 @@ import { useAssetTypes, useCreateAsset, useTags } from "@/lib/queries";
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [assetName, setAssetName] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>(["beta"]);
+  // No tag is pre-selected: "beta" was a hardcoded default that the backend
+  // may not even offer.
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [message, setMessage] = useState<string>("");
   const typesQuery = useAssetTypes();
   const tagsQuery = useTags();
   const createMutation = useCreateAsset();
-  // No invented catalogue: when the backend cannot answer, the form says so
-  // rather than offering types and tags it cannot actually publish against.
+  // No invented catalogue. Asset types get an explicit error state below;
+  // tags degrade to an empty group, since they are optional metadata and a
+  // second error block would bury the one that blocks publishing.
   const assetTypes = typesQuery.data ?? [];
   const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? [];
 
@@ -129,7 +132,7 @@ export default function PublishAsset() {
                   className={`focus-ring relative rounded-2xl border p-5 text-left transition-all ${selectedType === type.id ? "border-accent/35 bg-accent/10 shadow-[0_18px_50px_rgba(95,251,241,0.07)]" : "border-outline-variant/20 bg-white/3 hover:border-accent/25 hover:bg-white/5"}`}
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-accent">
-                    <span className="material-symbols-outlined text-[24px]">{type.icon}</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[24px]">{type.icon}</span>
                   </div>
                   <h3 className="text-xl font-semibold text-primary">{type.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{type.description}</p>
@@ -226,7 +229,7 @@ export default function PublishAsset() {
             className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95"
           >
             {status === "creating" ? "Creating..." : selectedType && assetName.trim() ? "Create asset" : "Continue"}
-            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
       </footer>

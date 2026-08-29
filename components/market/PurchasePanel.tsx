@@ -461,7 +461,7 @@ export function PurchasePanel({ asset }: { asset: AssetDetail }) {
       </div>
 
       {network && !network.isSupported ? (
-        <Callout tone="warning" title="This wallet is not on a supported network" live="assertive">
+        <Callout tone="warning" title="This wallet is not on a supported network" live="polite">
           <p>
             Market V1 settles on Stellar Testnet. Switch Freighter to Testnet before buying.
           </p>

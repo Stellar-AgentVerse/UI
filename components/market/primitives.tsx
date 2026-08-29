@@ -218,18 +218,25 @@ export function ErrorState({
   requestId,
   onRetry,
   retryLabel = 'Try again',
+  live = 'polite',
 }: {
   title: string;
   message: string;
   requestId?: string;
   onRetry?: () => void;
   retryLabel?: string;
+  /**
+   * Polite by default: a page can render several of these at once when the
+   * backend is down, and four simultaneous assertive alerts interrupt a screen
+   * reader without telling it anything the polite queue would not.
+   */
+  live?: 'polite' | 'assertive';
 }) {
   return (
     <Callout
       tone="error"
       title={title}
-      live="assertive"
+      live={live}
       actions={
         onRetry ? (
           <button type="button" onClick={onRetry} className="market-button-secondary">

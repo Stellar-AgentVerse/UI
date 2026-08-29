@@ -123,7 +123,7 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
       ) : null}
 
       {state?.kind === 'expired' ? (
-        <Callout tone="warning" title="The delivery result has expired" live="assertive">
+        <Callout tone="warning" title="The delivery result has expired" live="polite">
           <p>
             The marketplace keeps delivery results for a limited period and this one is past it.
             Your purchase record is unaffected — contact support with the references below to have
@@ -133,7 +133,7 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
       ) : null}
 
       {state?.kind === 'unauthorized' ? (
-        <Callout tone="error" title="This delivery is not available to the signed-in account" live="assertive">
+        <Callout tone="error" title="This delivery is not available to the signed-in account" live="polite">
           <p>
             The marketplace refused the request, so no content was returned. Check that Freighter is
             on the account that made the purchase, then sign in again.
@@ -145,7 +145,7 @@ export function DeliveryPanel({ purchaseId }: { purchaseId: string }) {
         <Callout
           tone="error"
           title="The delivery result could not be read"
-          live="assertive"
+          live="polite"
           actions={
             state.retryable ? (
               <button type="button" className="market-button-secondary" onClick={checkAgain}>

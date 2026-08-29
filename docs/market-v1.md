@@ -80,12 +80,18 @@ can be reasoned about without a browser, a wallet or a backend.
 
 ## Why a retry cannot become a second purchase
 
-The idempotency key is generated once per attempt and written to
-`localStorage` **before the first request leaves the browser**
-(`lib/market/purchase-store.ts`). The backend keys purchases on
-`(buyerPublicKey, idempotencyKey)` with a unique index, so every repeat of the
-flow — a reload, a retry, a second tab, a browser closed between signing and
-confirmation — resolves to the same purchase record.
+The idempotency key is generated once per attempt and written **before the
+first request leaves the browser** (`lib/market/purchase-store.ts`). The backend
+keys purchases on `(buyerPublicKey, idempotencyKey)` with a unique index, so
+every repeat of the flow — a reload, a retry, a second tab, a browser closed
+between signing and confirmation — resolves to the same purchase record.
+
+Writes go to `localStorage` and are mirrored in memory. The mirror matters when
+storage is unavailable (private mode, blocked site data, a quota error): without
+it every read would come back empty and each retry would mint a new key, which
+is exactly the duplicate this design prevents. With storage unavailable the tab
+still stays consistent with itself; what is lost is resumption **after a
+reload**, since there is nowhere durable to resume from.
 
 A new key is minted in exactly one case: the quote expired. After a rejected
 submission or a chain failure the marketplace's record is still `PENDING` and
@@ -138,7 +144,7 @@ found" for a transaction that exists.
 | `NEXT_PUBLIC_API_URL` | yes | Backend origin. Also the target of the `/api/*` rewrite in `next.config.ts` |
 | `NEXT_PUBLIC_SOROBAN_RPC_URL` | no | Soroban RPC used for submission and polling. Defaults to `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_SUPPORT_URL` | no | Support destination. Falls back to the repository issue tracker |
-| `NEXT_PUBLIC_STELLAR_EXPLORER_URL` | no | Explorer origin for transaction receipts. Defaults to `https://stellar.expert` |
+| `NEXT_PUBLIC_STELLAR_EXPLORER_URL` | no | Origin of a stellar.expert-compatible explorer. Only the origin is used; the path is built as `/explorer/{network}/tx/{hash}`, so a different explorer's URL scheme will not work. Defaults to `https://stellar.expert` |
 
 All are inlined at build time, so a change needs a rebuild.
 
