@@ -25,7 +25,7 @@ describe('API client', () => {
     }));
   });
 
-  it('preserves structured error details in ApiError', async () => {
+  it('preserves structured error details in ApiError and does not persist failed auth', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ code: 'EXPIRED', message: 'Challenge expired' }),
       { status: 401, statusText: 'Unauthorized' },
@@ -35,6 +35,8 @@ describe('API client', () => {
       status: 401,
       details: { code: 'EXPIRED', message: 'Challenge expired' },
     });
+    expect(getAuthToken()).toBeUndefined();
+    expect(getAuthUser()).toBeUndefined();
     expect(new ApiError(500, 'Server Error').message).toBe('API 500: Server Error');
   });
 
@@ -51,7 +53,7 @@ describe('API client', () => {
     expect(getAuthUser()).toEqual(user);
   });
 
-  it('treats a missing token or user as an expired session', async () => {
+  it('does not treat a stored user without a token as an active session', async () => {
     window.sessionStorage.setItem('agentverse.auth.user', JSON.stringify({ publicKey: 'GABC' }));
     expect(getAuthToken()).toBeUndefined();
     expect(getAuthUser()).toBeTruthy();

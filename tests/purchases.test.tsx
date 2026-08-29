@@ -1,35 +1,62 @@
-import { describe, expect, it, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
-import { useConfirmPurchase } from '@/lib/queries/usePurchases';
-import { renderHook, act } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { confirmPurchase } from '@/lib/api';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import AssetDetails from '@/app/assets/[id]/page';
 
-vi.mock('@/lib/api', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
-  return { ...actual, confirmPurchase: vi.fn() };
-});
+const mocks = vi.hoisted(() => ({ createIntent: vi.fn(), confirm: vi.fn(), access: vi.fn(), connect: vi.fn(), sign: vi.fn() }));
 
-describe('purchase state transitions', () => {
-  it('can retry confirmation and invalidates wallet and marketplace after settlement', async () => {
-    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-    const invalidateQueries = vi.spyOn(client, 'invalidateQueries');
-    vi.mocked(confirmPurchase)
-      .mockRejectedValueOnce(new Error('temporary RPC failure'))
-      .mockResolvedValueOnce({ purchaseId: 'purchase-1', status: 'SETTLED' });
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    );
-    const { result } = renderHook(() => useConfirmPurchase(), { wrapper });
+vi.mock('next/navigation', () => ({ useParams: () => ({ id: 'asset-1' }) }));
+vi.mock('@/lib/stellar-purchase', () => ({ connectFreighter: mocks.connect, signAndSubmitPurchase: mocks.sign }));
+vi.mock('@/lib/queries', () => ({
+  useAsset: () => ({ data: { id: 'asset-1', name: 'Fixture Prompt', description: 'Test prompt', type: 'PROMPT', price: 10, tags: [], metrics: undefined } }),
+  useCreatePurchaseIntent: () => ({ mutateAsync: mocks.createIntent }),
+  useConfirmPurchase: () => ({ mutateAsync: mocks.confirm }),
+  usePurchaseAccess: () => ({ mutateAsync: mocks.access }),
+}));
+vi.mock('@/components/agentverse/NavBar', () => ({ default: () => <nav /> }));
+vi.mock('@/components/agentverse/Footer', () => ({ default: () => <footer /> }));
+vi.mock('@/components/agentverse/GlassCard', () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 
-    await expect(result.current.mutateAsync({ purchaseId: 'purchase-1', transactionHash: 'tx-1' })).rejects.toThrow('temporary RPC failure');
-    await act(async () => {
-      await expect(result.current.mutateAsync({ purchaseId: 'purchase-1', transactionHash: 'tx-1' })).resolves.toEqual({ purchaseId: 'purchase-1', status: 'SETTLED' });
-    });
+const intent = { purchaseId: 'purchase-1', unsignedXdr: 'unsigned-xdr', networkPassphrase: 'Test SDF Network ; September 2015', assetId: 'asset-1', amount: 10, expiresAt: '', contractId: '', idempotencyKey: 'idem-1' };
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['wallet'] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplace'] });
-    expect(confirmPurchase).toHaveBeenCalledTimes(2);
+describe('asset purchase UI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('crypto', { randomUUID: () => 'idem-1' });
+    mocks.connect.mockResolvedValue('GABC');
+    mocks.sign.mockResolvedValue('tx-1');
+    mocks.confirm.mockResolvedValue({ purchaseId: 'purchase-1', status: 'SETTLED' });
+    mocks.access.mockResolvedValue({ deliveryReference: 'https://staging.example/delivery' });
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+  });
+
+  it('renders pending states while preparing and confirming a purchase', async () => {
+    let resolveIntent!: (value: typeof intent) => void;
+    let resolveConfirm!: (value: { purchaseId: string; status: string }) => void;
+    mocks.createIntent.mockReturnValue(new Promise((resolve) => { resolveIntent = resolve; }));
+    mocks.confirm.mockReturnValue(new Promise((resolve) => { resolveConfirm = resolve; }));
+    const user = userEvent.setup();
+    render(<AssetDetails />);
+
+    await user.click(screen.getByRole('button', { name: /Buy prompt/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Preparing transaction…');
+    resolveIntent(intent);
+    expect(await screen.findByRole('status')).toHaveTextContent('Confirming on Stellar…');
+    resolveConfirm({ purchaseId: 'purchase-1', status: 'SETTLED' });
+  });
+
+  it('shows failure, retries, replays the same idempotency key, and reaches settled delivery', async () => {
+    mocks.createIntent.mockRejectedValueOnce(new Error('temporary backend failure')).mockResolvedValueOnce(intent);
+    const user = userEvent.setup();
+    render(<AssetDetails />);
+
+    await user.click(screen.getByRole('button', { name: /Buy prompt/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent('temporary backend failure');
+    await user.click(screen.getByRole('button', { name: /Buy prompt/ }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Access granted. Opening delivery…'));
+    expect(mocks.createIntent).toHaveBeenCalledTimes(2);
+    expect(mocks.createIntent).toHaveBeenNthCalledWith(1, { assetId: 'asset-1', idempotencyKey: 'idem-1' });
+    expect(mocks.createIntent).toHaveBeenNthCalledWith(2, { assetId: 'asset-1', idempotencyKey: 'idem-1' });
   });
 });
