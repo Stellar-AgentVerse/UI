@@ -4,19 +4,12 @@ import { useMemo, useState } from "react";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import type { AssetType } from "@/lib/api";
+import { WalletBar } from "@/components/market/WalletBar";
+import { toServerFailure } from "@/lib/api";
+import { ErrorState } from "@/components/market/primitives";
 import { useAssetTypes, useCreateAsset, useTags } from "@/lib/queries";
 
-const fallbackTypes: AssetType[] = [
-  { id: "agent", icon: "smart_toy", title: "Agent", description: "Autonomous logic entities powered by LLMs." },
-  { id: "prompt", icon: "terminal", title: "Prompt", description: "Optimized instructions and reasoning chains." },
-  { id: "model", icon: "memory", title: "Model", description: "Custom fine-tunes or specialized weights." },
-  { id: "dataset", icon: "database", title: "Dataset", description: "High-signal training corpora or vector stores." },
-  { id: "tool", icon: "build", title: "Tool", description: "Custom API connectors and function calls." },
-  { id: "oracle", icon: "radar", title: "Oracle", description: "Real-world data validation for smart agents." },
-];
 
-const defaultTags = ["beta", "experimental", "stable", "deprecated"];
 
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -27,8 +20,10 @@ export default function PublishAsset() {
   const typesQuery = useAssetTypes();
   const tagsQuery = useTags();
   const createMutation = useCreateAsset();
-  const assetTypes = typesQuery.data ?? fallbackTypes;
-  const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? defaultTags;
+  // No invented catalogue: when the backend cannot answer, the form says so
+  // rather than offering types and tags it cannot actually publish against.
+  const assetTypes = typesQuery.data ?? [];
+  const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? [];
 
   const currentStep = useMemo(() => {
     if (!selectedType) return 1;
@@ -73,7 +68,7 @@ export default function PublishAsset() {
           { label: "Dashboard", href: "/dashboard" },
           { label: "Publish", href: "/publish", active: true },
         ]}
-        rightContent={<button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">Launch App</button>}
+        rightContent={<WalletBar />}
       />
 
       <div className="fixed inset-0 -z-10 pointer-events-none">
@@ -115,6 +110,15 @@ export default function PublishAsset() {
               <h2 className="section-title text-2xl md:text-3xl">Choose the asset type</h2>
               <p className="mt-2 text-sm text-on-surface-variant">Select the core architecture for your new decentralized asset.</p>
             </div>
+
+            {typesQuery.isError ? (
+              <ErrorState
+                title="Asset types could not be loaded"
+                message={toServerFailure(typesQuery.error).message}
+                requestId={toServerFailure(typesQuery.error).requestId}
+                onRetry={() => typesQuery.refetch()}
+              />
+            ) : null}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {assetTypes.map((type) => (

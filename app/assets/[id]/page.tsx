@@ -1,284 +1,244 @@
 'use client';
 
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import Footer from "@/components/agentverse/Footer";
-import GlassCard from "@/components/agentverse/GlassCard";
-import NavBar from "@/components/agentverse/NavBar";
-import { connectFreighter, signAndSubmitPurchase } from "@/lib/stellar-purchase";
-import { useAsset, useConfirmPurchase, useCreatePurchaseIntent, usePurchaseAccess } from "@/lib/queries";
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import Footer from '@/components/agentverse/Footer';
+import GlassCard from '@/components/agentverse/GlassCard';
+import NavBar from '@/components/agentverse/NavBar';
+import { SessionNotice, WalletBar } from '@/components/market/WalletBar';
+import { PurchasePanel } from '@/components/market/PurchasePanel';
+import { Callout, CardSkeleton, ErrorState } from '@/components/market/primitives';
+import { ArrowRightIcon, PromptIcon } from '@/components/market/icons';
+import { toServerFailure } from '@/lib/api';
+import { assetTypeLabel, isMarketV1AssetType } from '@/lib/market/scope';
+import { useAsset } from '@/lib/queries';
 
-function MetricTile({ label, value, icon }: { label: string; value: string; icon: string }) {
-  return (
-    <GlassCard className="p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">{label}</div>
-          <div className="mt-3 text-2xl font-semibold text-primary">{value}</div>
-        </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-outline-variant/20 bg-white/5 text-accent">
-          <span className="material-symbols-outlined text-[22px]">{icon}</span>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
+const NAV_LINKS = [
+  { label: 'Marketplace', href: '/marketplace', active: true },
+  { label: 'Wallet', href: '/wallet' },
+  { label: 'Dashboard', href: '/dashboard' },
+];
 
-export default function AssetDetails() {
+export default function AssetDetailPage() {
   const params = useParams();
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [purchaseState, setPurchaseState] = useState<string | null>(null);
-  const assetQuery = useAsset(params?.id as string | undefined);
-  const purchaseIntentMutation = useCreatePurchaseIntent();
-  const confirmPurchaseMutation = useConfirmPurchase();
-  const purchaseAccessMutation = usePurchaseAccess();
+  const id = typeof params?.id === 'string' ? params.id : undefined;
+  const assetQuery = useAsset(id);
   const asset = assetQuery.data;
-
-  const metrics = useMemo(() => asset?.metrics, [asset]);
-  const workflow = asset?.workflow ?? [];
-  const specs = asset?.specs ?? [];
-  const capabilities = asset?.capabilities ?? [];
-
-  async function connectWallet() {
-    try {
-      const address = await connectFreighter();
-      setWalletAddress(address);
-      setPurchaseState(null);
-    } catch (error) {
-      setPurchaseState(error instanceof Error ? error.message : 'Unable to connect Freighter');
-    }
-  }
-
-  async function purchasePrompt() {
-    if (!asset || asset.type !== 'PROMPT') return;
-    try {
-      const buyer = walletAddress ?? (await connectFreighter());
-      setWalletAddress(buyer);
-      setPurchaseState('Preparing transaction…');
-      const intent = await purchaseIntentMutation.mutateAsync({ assetId: asset.id, idempotencyKey: crypto.randomUUID() });
-      setPurchaseState('Waiting for Freighter signature…');
-      const transactionHash = await signAndSubmitPurchase(
-        intent.unsignedXdr,
-        intent.networkPassphrase,
-        buyer,
-      );
-      setPurchaseState('Confirming on Stellar…');
-      await confirmPurchaseMutation.mutateAsync({ purchaseId: intent.purchaseId, transactionHash });
-      const access = await purchaseAccessMutation.mutateAsync(intent.purchaseId);
-      setPurchaseState('Access granted. Opening delivery…');
-      window.open(access.deliveryReference, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      setPurchaseState(error instanceof Error ? error.message : 'Purchase failed');
-    }
-  }
 
   return (
     <div className="min-h-screen overflow-x-hidden">
-      <NavBar
-        links={[
-          { label: "Marketplace", href: "/marketplace" },
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Wallet", href: "/wallet" },
-        ]}
-        rightContent={
-          <div className="flex items-center gap-3">
-            <button onClick={connectWallet} className="focus-ring rounded-full border border-outline-variant/25 px-4 py-2 text-sm text-on-surface-variant transition-colors hover:text-primary">
-              {walletAddress ? `${walletAddress.slice(0, 5)}…${walletAddress.slice(-4)}` : 'Connect wallet'}
-            </button>
-            <button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
-              Launch App
-            </button>
-          </div>
-        }
-      />
+      <NavBar links={NAV_LINKS} rightContent={<WalletBar />} />
 
-      <div className="fixed inset-0 -z-10 pointer-events-none">
+      <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute right-[-8%] top-[-8%] h-[28rem] w-[28rem] rounded-full bg-accent/8 blur-[120px]" />
-        <div className="absolute left-[-8%] bottom-[-10%] h-[24rem] w-[24rem] rounded-full bg-secondary/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-8%] h-[24rem] w-[24rem] rounded-full bg-secondary/10 blur-[120px]" />
       </div>
 
       <main className="page-shell pt-28 pb-24">
-        {assetQuery.isError && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load this asset.</p>}
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <GlassCard className="relative overflow-hidden p-0">
-            <div className="relative min-h-[32rem] overflow-hidden rounded-2xl">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(95,251,241,0.16),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]" />
-              <div className="absolute inset-0 opacity-80">
-                <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant/20" />
-                <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant/10" />
-                <div className="absolute left-1/2 top-1/2 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/20 bg-background/60 backdrop-blur-md">
-                  <span className="material-symbols-outlined text-7xl text-primary">psychology</span>
-                </div>
-              </div>
+        <Link
+          href="/marketplace"
+          className="focus-ring mb-6 inline-flex min-h-[44px] items-center gap-2 rounded-full text-sm font-medium text-accent"
+        >
+          <ArrowRightIcon className="h-4 w-4 rotate-180" />
+          Back to the catalog
+        </Link>
 
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent p-6 md:p-8">
-                <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">
-                  <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
-                  {asset?.type ?? "Loading"}
-                </div>
-                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-primary md:text-6xl">{asset?.name ?? "—"}</h1>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-variant md:text-base">
-                  {asset?.description ?? "—"}
-                </p>
+        <div className="mb-6 space-y-4">
+          <SessionNotice />
+        </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {(asset?.tags ?? []).map((tag) => (
-                    <span key={tag} className="rounded-full border border-outline-variant/20 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-on-surface-variant">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-
-          <div className="space-y-4">
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="section-kicker mb-2">Access</p>
-                  <h2 className="section-title text-2xl">Pricing and execution</h2>
-                </div>
-                <span className="material-symbols-outlined text-accent">payments</span>
-              </div>
-
-              <div className="mt-6 flex items-end gap-3">
-                <div className="text-5xl font-semibold text-primary">{asset?.price ?? "—"}</div>
-                <div className="pb-1 text-sm text-on-surface-variant">credits / run</div>
-              </div>
-
-              <button onClick={purchasePrompt} disabled={asset?.type !== 'PROMPT'} className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
-                <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-                Buy prompt
-              </button>
-              {purchaseState && <p role="status" className="mt-3 text-sm text-on-surface-variant">{purchaseState}</p>}
-            </GlassCard>
-
-            <div className="grid grid-cols-2 gap-4">
-              <MetricTile label="Executions" value={metrics ? metrics.executions.toLocaleString() : "—"} icon="bolt" />
-              <MetricTile label="Revenue" value={metrics ? `${metrics.revenue.toLocaleString()} XLM` : "—"} icon="payments" />
-              <MetricTile label="Active users" value={metrics ? metrics.activeUsers.toLocaleString() : "—"} icon="group" />
-              <MetricTile label="Rating" value={metrics ? metrics.rating.toFixed(2) : "—"} icon="star" />
-            </div>
-
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="section-kicker mb-2">Architect</p>
-                  <h2 className="section-title text-2xl">Etherion Systems</h2>
-                </div>
-                <span className="rounded-full border border-outline-variant/20 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Verified
-                </span>
-              </div>
-              <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
-                Specializing in high-frequency data synthesis and autonomous reasoning models for the Aetheric network.
-              </p>
-              <button className="focus-ring mt-6 rounded-full border border-outline-variant/25 px-4 py-3 text-sm font-semibold text-primary transition-all hover:border-accent/30 hover:bg-accent/10">
-                Follow architect
-              </button>
-            </GlassCard>
+        {assetQuery.isPending ? (
+          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
-        </section>
-
-        <section className="mt-10 grid gap-4 lg:grid-cols-2">
-          <GlassCard className="p-6">
-            <div className="mb-6 flex items-end justify-between gap-4">
-              <div>
-                <p className="section-kicker mb-2">Capabilities</p>
-                <h2 className="section-title text-2xl md:text-3xl">What it does</h2>
-              </div>
-              <span className="text-sm text-on-surface-variant">{capabilities.length} capabilities</span>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {capabilities.length
-                ? capabilities.map((cap) => (
-                    <div key={cap.title} className="rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
-                      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-                        <span className="material-symbols-outlined">{cap.icon}</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-primary">{cap.title}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{cap.description}</p>
-                    </div>
-                  ))
-                : <p className="text-sm text-on-surface-variant">No capabilities available yet.</p>}
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-6">
-            <div className="mb-6 flex items-end justify-between gap-4">
-              <div>
-                <p className="section-kicker mb-2">Workflow</p>
-                <h2 className="section-title text-2xl md:text-3xl">Typical logic flow</h2>
-              </div>
-              <span className="text-sm text-on-surface-variant">{workflow.length} steps</span>
-            </div>
-            <div className="space-y-4">
-              {workflow.length
-                ? workflow.map((step, index) => (
-                    <div key={step.label} className="flex items-center gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
-                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${step.isFilled ? "border-accent/30 bg-accent text-on-primary" : step.isActive ? "border-accent/30 bg-accent/10 text-accent" : "border-outline-variant/20 bg-white/5 text-on-surface-variant"}`}>
-                        <span className="material-symbols-outlined text-[20px]">{step.icon}</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-primary">{step.label}</div>
-                        <div className="text-sm text-on-surface-variant">Step {index + 1}</div>
-                      </div>
-                    </div>
-                  ))
-                : <p className="text-sm text-on-surface-variant">Workflow not available yet.</p>}
-            </div>
-          </GlassCard>
-        </section>
-
-        <section className="mt-10 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <GlassCard className="p-6">
-            <div className="mb-6">
-              <p className="section-kicker mb-2">Technical details</p>
-              <h2 className="section-title text-2xl md:text-3xl">Specifications</h2>
-            </div>
-            <div className="space-y-3">
-              {specs.length
-                ? specs.map((spec) => (
-                    <div key={spec.parameter} className="flex items-start justify-between gap-4 rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
-                      <div>
-                        <div className="text-sm uppercase tracking-[0.18em] text-on-surface-variant">{spec.parameter}</div>
-                        <div className="mt-1 font-medium text-primary">{spec.value}</div>
-                      </div>
-                      <div className="max-w-[45%] text-right text-sm text-on-surface-variant">{spec.notes}</div>
-                    </div>
-                  ))
-                : <p className="text-sm text-on-surface-variant">No specifications available yet.</p>}
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-6">
-            <div className="mb-6 flex items-end justify-between gap-4">
-              <div>
-                <p className="section-kicker mb-2">Trust</p>
-                <h2 className="section-title text-2xl md:text-3xl">Creator profile</h2>
-              </div>
-              <span className="material-symbols-outlined text-accent">verified</span>
-            </div>
-            <div className="rounded-2xl border border-outline-variant/15 bg-white/3 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent">
-                  <span className="material-symbols-outlined text-[28px]">person</span>
-                </div>
-                <div>
-                  <div className="text-xl font-semibold text-primary">Etherion Systems</div>
-                  <div className="text-sm text-on-surface-variant">@etherion_hq</div>
-                </div>
-              </div>
-              <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
-                Specializing in high-frequency data synthesis and autonomous reasoning models for the Aetheric network.
-              </p>
-            </div>
-          </GlassCard>
-        </section>
+        ) : assetQuery.isError ? (
+          <ErrorState
+            title="This prompt could not be loaded"
+            message={toServerFailure(assetQuery.error).message}
+            requestId={toServerFailure(assetQuery.error).requestId}
+            onRetry={() => assetQuery.refetch()}
+          />
+        ) : !asset ? (
+          <ErrorState
+            title="This prompt could not be loaded"
+            message="The marketplace answered successfully but returned no asset for this address."
+          />
+        ) : !isMarketV1AssetType(asset.type) ? (
+          <UnsupportedAsset type={asset.type} name={asset.name} />
+        ) : (
+          <PromptDetail asset={asset} />
+        )}
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+function UnsupportedAsset({ type, name }: { type: string; name: string }) {
+  return (
+    <div className="max-w-2xl space-y-6">
+      <h1 className="section-title text-3xl md:text-4xl">{name}</h1>
+      <Callout tone="warning" title={`${assetTypeLabel(type)} assets are not part of Market V1`}>
+        <p>
+          Market V1 sells curated prompts only. This {assetTypeLabel(type).toLowerCase()} exists in
+          the catalog, but there is no purchase or delivery path for it yet, so it cannot be bought
+          here and is not offered for sale anywhere in the app.
+        </p>
+      </Callout>
+      <Link href="/marketplace" className="market-button-primary">
+        Browse the prompt catalog
+      </Link>
+    </div>
+  );
+}
+
+function PromptDetail({ asset }: { asset: NonNullable<ReturnType<typeof useAsset>['data']> }) {
+  const capabilities = asset.capabilities ?? [];
+  const specs = asset.specs ?? [];
+  const metrics = asset.metrics;
+  const tags = asset.tags ?? [];
+
+  return (
+    <div className="space-y-8">
+      <header className="max-w-3xl space-y-4">
+        <span className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">
+          <PromptIcon className="h-3.5 w-3.5" />
+          Prompt
+        </span>
+        <h1 className="section-title text-4xl md:text-5xl">{asset.name}</h1>
+        <p className="section-copy">
+          {asset.description?.trim() || 'This prompt has no description yet.'}
+        </p>
+        {tags.length ? (
+          <ul className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <li
+                key={tag}
+                className="rounded-full border border-outline-variant/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-on-surface-variant"
+              >
+                {tag}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+        <div className="space-y-6">
+          <GlassCard className="p-6">
+            <h2 className="font-heading text-xl font-semibold text-primary">Publisher</h2>
+            <p className="mt-3 text-sm text-on-surface-variant">
+              Published by the Stellar account below. The marketplace does not verify publisher
+              identities, so treat the account itself as the identity.
+            </p>
+            <p className="mt-3 break-all font-label text-sm text-on-surface">
+              {asset.creatorPublicKey}
+            </p>
+            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                  First published
+                </dt>
+                <dd className="mt-1 text-sm text-on-surface">
+                  {new Date(asset.createdAt).toLocaleDateString()}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                  Catalog status
+                </dt>
+                <dd className="mt-1 text-sm text-on-surface">{asset.status}</dd>
+              </div>
+            </dl>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="font-heading text-xl font-semibold text-primary">Recorded activity</h2>
+            {metrics ? (
+              <dl className="mt-4 grid grid-cols-2 gap-4">
+                <Metric
+                  label="Executions"
+                  value={metrics.executions > 0 ? metrics.executions.toLocaleString() : 'None yet'}
+                />
+                <Metric
+                  label="Buyers"
+                  value={metrics.activeUsers > 0 ? metrics.activeUsers.toLocaleString() : 'None yet'}
+                />
+                <Metric
+                  label="Rating"
+                  value={metrics.rating > 0 ? `${metrics.rating.toFixed(2)} / 5` : 'Not rated yet'}
+                />
+                <Metric
+                  label="Revenue"
+                  value={metrics.revenue > 0 ? metrics.revenue.toLocaleString() : 'None yet'}
+                />
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm text-on-surface-variant">
+                The marketplace has no recorded activity for this prompt.
+              </p>
+            )}
+          </GlassCard>
+
+          {capabilities.length ? (
+            <GlassCard className="p-6">
+              <h2 className="font-heading text-xl font-semibold text-primary">What it does</h2>
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                {capabilities.map((capability) => (
+                  <li
+                    key={capability.title}
+                    className="rounded-2xl border border-outline-variant/15 bg-white/4 p-4"
+                  >
+                    <h3 className="font-medium text-primary">{capability.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+                      {capability.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          ) : null}
+
+          {specs.length ? (
+            <GlassCard className="p-6">
+              <h2 className="font-heading text-xl font-semibold text-primary">Specifications</h2>
+              <dl className="mt-4 space-y-3">
+                {specs.map((spec) => (
+                  <div
+                    key={spec.parameter}
+                    className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-outline-variant/15 bg-white/4 p-4"
+                  >
+                    <div>
+                      <dt className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                        {spec.parameter}
+                      </dt>
+                      <dd className="mt-1 font-medium text-primary">{spec.value}</dd>
+                    </div>
+                    {spec.notes ? (
+                      <p className="max-w-[45%] text-sm text-on-surface-variant">{spec.notes}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </dl>
+            </GlassCard>
+          ) : null}
+        </div>
+
+        <GlassCard className="p-6 lg:sticky lg:top-28" hover={false}>
+          <PurchasePanel asset={asset} />
+        </GlassCard>
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant/15 bg-white/4 p-4">
+      <dt className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">{label}</dt>
+      <dd className="mt-2 text-lg font-semibold text-primary">{value}</dd>
     </div>
   );
 }

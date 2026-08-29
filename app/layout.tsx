@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/lib/providers/query-provider";
+import { MarketSessionProvider } from "@/lib/market/session";
 
 export const metadata: Metadata = {
   title: "AgentVerse — AI Marketplace",
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="font-body antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <MarketSessionProvider>{children}</MarketSessionProvider>
+        </QueryProvider>
       </body>
     </html>
   );

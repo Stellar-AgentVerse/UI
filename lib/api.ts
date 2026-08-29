@@ -4,14 +4,62 @@ const AUTH_TOKEN_KEY = 'agentverse.auth.token';
 const AUTH_USER_KEY = 'agentverse.auth.user';
 
 export class ApiError extends Error {
+  /**
+   * The message the backend actually sent, when it sent one. The backend's
+   * error filter answers `{ statusCode, message, error }`, and that `message`
+   * is the only thing that distinguishes several outcomes that share a status
+   * code, so it is kept rather than flattened into `API 409: Conflict`.
+   */
+  public readonly serverMessage: string;
+
   constructor(
     public readonly status: number,
     public readonly statusText: string,
     public readonly details?: unknown,
+    /** Correlation id from the response envelope, for support and reconciliation. */
+    public readonly requestId?: string,
   ) {
-    super(`API ${status}: ${statusText}`);
+    const serverMessage = extractServerMessage(details);
+    super(serverMessage || `API ${status}: ${statusText}`);
     this.name = 'ApiError';
+    this.serverMessage = serverMessage;
   }
+}
+
+function extractServerMessage(details: unknown): string {
+  if (typeof details === 'string') return details.trim();
+  if (!details || typeof details !== 'object') return '';
+  const message = (details as { message?: unknown }).message;
+  if (typeof message === 'string') return message;
+  if (Array.isArray(message)) return message.map(String).join('; ');
+  return '';
+}
+
+/**
+ * Flatten any thrown value into the shape the purchase state machine maps.
+ * A status of 0 means the request never got an answer, which is retryable and
+ * must never be read as a refusal.
+ */
+export function toServerFailure(error: unknown): {
+  status: number;
+  message: string;
+  requestId?: string;
+} {
+  if (error instanceof ApiError) {
+    return {
+      status: error.status,
+      message:
+        error.serverMessage || `The marketplace returned ${error.status}.`,
+      requestId: error.requestId,
+    };
+  }
+  return {
+    status: 0,
+    message:
+      error instanceof Error && error.message
+        ? error.message
+        : 'The marketplace could not be reached.',
+  };
 }
 
 export function setAuthToken(token: string) {
@@ -44,6 +92,21 @@ interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | undefined>;
 }
 
+/**
+ * A request that never answers is indistinguishable from a slow one, and a UI
+ * that waits forever shows a skeleton forever. Every call gets a deadline so a
+ * stalled backend becomes a visible, retryable error state instead.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function timeoutSignal(): AbortSignal | undefined {
+  // AbortSignal.timeout is unavailable in older runtimes; losing the deadline
+  // is acceptable, throwing on a missing API is not.
+  return typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
+    ? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    : undefined;
+}
+
 async function request<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { params, ...fetchOpts } = options;
 
@@ -58,14 +121,32 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   }
 
   const authToken = getAuthToken();
-  const res = await fetch(url, {
-    ...fetchOpts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      ...fetchOpts.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      signal: fetchOpts.signal ?? timeoutSignal(),
+      ...fetchOpts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...fetchOpts.headers,
+      },
+    });
+  } catch (error) {
+    // fetch rejects for DNS, CORS, connection refused and timeouts alike. None
+    // of them carry a status, so they are normalised into one honest message
+    // rather than surfacing as an unhandled rejection.
+    const timedOut =
+      error instanceof DOMException && error.name === 'TimeoutError';
+    throw new Error(
+      timedOut
+        ? `The marketplace did not answer within ${REQUEST_TIMEOUT_MS / 1000} seconds.`
+        : 'The marketplace could not be reached.',
+      { cause: error },
+    );
+  }
+
+  const requestId = res.headers.get('x-request-id') ?? undefined;
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -75,7 +156,7 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
     } catch {
       // Keep non-JSON error bodies as text.
     }
-    throw new ApiError(res.status, res.statusText, details);
+    throw new ApiError(res.status, res.statusText, details, requestId);
   }
 
   if (res.status === 204) return undefined as T;
@@ -358,6 +439,43 @@ export function confirmPurchase(purchaseId: string, transactionHash: string) {
 
 export function fetchPurchaseAccess(purchaseId: string) {
   return request<PurchaseAccess>(`/api/marketplace/purchases/${purchaseId}/access`);
+}
+
+// ── Prompt delivery ──
+
+/**
+ * AES-256-GCM envelope produced by the backend delivery worker. The data key
+ * is wrapped by the backend's KMS, so this ciphertext is not decryptable in a
+ * browser; the UI renders it as a receipt, never as content.
+ */
+export interface EncryptedDeliveryEnvelope {
+  version: number;
+  algorithm: string;
+  nonce: string;
+  ciphertext: string;
+  tag: string;
+}
+
+export interface DeliveryResult {
+  id: string;
+  canonicalId: string;
+  commandId: string;
+  purchaseId: string;
+  buyerPublicKey: string;
+  tenantId: string;
+  encryptedResult: EncryptedDeliveryEnvelope;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/**
+ * Authenticated delivery result for a settled purchase.
+ *
+ * 404 here is the normal "not produced yet" answer, not an error state; the
+ * caller distinguishes pending from expired using the message.
+ */
+export function fetchDeliveryResult(purchaseId: string) {
+  return request<DeliveryResult>(`/api/prompt-delivery/${purchaseId}`);
 }
 
 export function fetchAssetTypes() {

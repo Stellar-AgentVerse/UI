@@ -21,6 +21,7 @@
   --color-accent: #5ffbf1;
   --color-accent-soft: rgba(95, 251, 241, 0.12);
   --color-danger: #ff7d8a;
+  --color-warning: #ffc978;
 
   --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-label: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
@@ -124,4 +125,30 @@ body {
 
 @utility focus-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+@utility market-button-primary {
+  @apply focus-ring inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95 disabled:pointer-events-none disabled:opacity-50;
+}
+
+@utility market-button-secondary {
+  @apply focus-ring inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-outline-variant/30 px-5 py-3 text-sm font-semibold text-primary transition-all hover:border-accent/40 hover:bg-accent/10 active:scale-95 disabled:pointer-events-none disabled:opacity-50;
+}
+
+/* Progress spinner. Honours prefers-reduced-motion (WCAG 2.3.3 / 2.2.2): the
+   icon stays visible and the textual status still announces progress. */
+.market-spinner {
+  animation: market-spin 900ms linear infinite;
+}
+
+@keyframes market-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-spinner {
+    animation: none;
+  }
 }
