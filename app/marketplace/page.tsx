@@ -128,11 +128,10 @@ export default function MarketplacePage() {
   const featuredQuery = useFeatured();
   const trendingQuery = useTrending();
   const categoriesQuery = useCategories();
-  const apiCategories = categoriesQuery.data ?? categoryDefs;
-
   const categories = useMemo(
-    () => apiCategories.map((category) => ({ ...category, active: category.label === activeCategory })),
-    [apiCategories, activeCategory],
+    () => (categoriesQuery.data ?? (categoriesQuery.isError ? [] : categoryDefs))
+      .map((category) => ({ ...category, active: category.label === activeCategory })),
+    [categoriesQuery.data, categoriesQuery.isError, activeCategory],
   );
 
   const activeType = useMemo(
@@ -141,12 +140,12 @@ export default function MarketplacePage() {
   );
 
   const searchQuery = useSearchAssets(searchTerm, activeType);
-  const featuredItems = featuredQuery.data ?? fallbackFeatured;
+  const featuredItems = featuredQuery.data ?? (featuredQuery.isError ? [] : fallbackFeatured);
   const trendingItems = useMemo(
     () => searchTerm.length > 2
       ? (searchQuery.data?.items ?? [])
-      : (trendingQuery.data ?? fallbackTrending),
-    [searchTerm, searchQuery.data, trendingQuery.data],
+      : (trendingQuery.data ?? (trendingQuery.isError ? [] : fallbackTrending)),
+    [searchTerm, searchQuery.data, trendingQuery.data, trendingQuery.isError],
   );
 
   const handleSearch = (value: string) => {

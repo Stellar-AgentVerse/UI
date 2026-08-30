@@ -1,0 +1,24 @@
+name: Staging wallet smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: Staging URL to verify
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --grep @staging
+        env:
+          BASE_URL: ${{ inputs.staging_url }}
