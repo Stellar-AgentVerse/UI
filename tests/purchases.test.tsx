@@ -145,8 +145,10 @@ describe('asset purchase UI', () => {
     );
 
     resolveIntent(intent);
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Verifying the payment with the marketplace',
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Verifying the payment with the marketplace',
+      ),
     );
     resolveConfirm({ purchaseId: 'purchase-1', status: 'VERIFIED' });
   });
