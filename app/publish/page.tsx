@@ -1,34 +1,33 @@
 'use client';
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import Footer from "@/components/agentverse/Footer";
 import GlassCard from "@/components/agentverse/GlassCard";
 import NavBar from "@/components/agentverse/NavBar";
-import type { AssetType } from "@/lib/api";
+import { WalletBar } from "@/components/market/WalletBar";
+import { toServerFailure } from "@/lib/api";
+import { ErrorState } from "@/components/market/primitives";
 import { useAssetTypes, useCreateAsset, useTags } from "@/lib/queries";
 
-const fallbackTypes: AssetType[] = [
-  { id: "agent", icon: "smart_toy", title: "Agent", description: "Autonomous logic entities powered by LLMs." },
-  { id: "prompt", icon: "terminal", title: "Prompt", description: "Optimized instructions and reasoning chains." },
-  { id: "model", icon: "memory", title: "Model", description: "Custom fine-tunes or specialized weights." },
-  { id: "dataset", icon: "database", title: "Dataset", description: "High-signal training corpora or vector stores." },
-  { id: "tool", icon: "build", title: "Tool", description: "Custom API connectors and function calls." },
-  { id: "oracle", icon: "radar", title: "Oracle", description: "Real-world data validation for smart agents." },
-];
 
-const defaultTags = ["beta", "experimental", "stable", "deprecated"];
 
 export default function PublishAsset() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [assetName, setAssetName] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>(["beta"]);
+  // No tag is pre-selected: "beta" was a hardcoded default that the backend
+  // may not even offer.
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "creating" | "error">("idle");
   const [message, setMessage] = useState<string>("");
   const typesQuery = useAssetTypes();
   const tagsQuery = useTags();
   const createMutation = useCreateAsset();
-  const assetTypes = typesQuery.data ?? fallbackTypes;
-  const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? defaultTags;
+  // No invented catalogue. Asset types get an explicit error state below;
+  // tags degrade to an empty group, since they are optional metadata and a
+  // second error block would bury the one that blocks publishing.
+  const assetTypes = typesQuery.data ?? [];
+  const availableTags = tagsQuery.data?.map((tag) => tag.name) ?? [];
 
   const currentStep = useMemo(() => {
     if (!selectedType) return 1;
@@ -73,7 +72,7 @@ export default function PublishAsset() {
           { label: "Dashboard", href: "/dashboard" },
           { label: "Publish", href: "/publish", active: true },
         ]}
-        rightContent={<button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">Launch App</button>}
+        rightContent={<WalletBar />}
       />
 
       <div className="fixed inset-0 -z-10 pointer-events-none">
@@ -116,6 +115,15 @@ export default function PublishAsset() {
               <p className="mt-2 text-sm text-on-surface-variant">Select the core architecture for your new decentralized asset.</p>
             </div>
 
+            {typesQuery.isError ? (
+              <ErrorState
+                title="Asset types could not be loaded"
+                message={toServerFailure(typesQuery.error).message}
+                requestId={toServerFailure(typesQuery.error).requestId}
+                onRetry={() => typesQuery.refetch()}
+              />
+            ) : null}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {assetTypes.map((type) => (
                 <button
@@ -124,7 +132,7 @@ export default function PublishAsset() {
                   className={`focus-ring relative rounded-2xl border p-5 text-left transition-all ${selectedType === type.id ? "border-accent/35 bg-accent/10 shadow-[0_18px_50px_rgba(95,251,241,0.07)]" : "border-outline-variant/20 bg-white/3 hover:border-accent/25 hover:bg-white/5"}`}
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-accent">
-                    <span className="material-symbols-outlined text-[24px]">{type.icon}</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[24px]">{type.icon}</span>
                   </div>
                   <h3 className="text-xl font-semibold text-primary">{type.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{type.description}</p>
@@ -135,8 +143,11 @@ export default function PublishAsset() {
 
             <div className="mt-8 space-y-6">
               <div>
-                <label className="section-kicker mb-3 block">Asset name</label>
+                <label htmlFor="asset-name" className="section-kicker mb-3 block">
+                  Asset name
+                </label>
                 <input
+                  id="asset-name"
                   className="input-surface"
                   placeholder="e.g. Neural-Sentience-v1"
                   type="text"
@@ -146,8 +157,14 @@ export default function PublishAsset() {
               </div>
 
               <div>
-                <label className="section-kicker mb-3 block">Metadata tags</label>
-                <div className="flex flex-wrap gap-3">
+                <p id="metadata-tags-label" className="section-kicker mb-3 block">
+                  Metadata tags
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="metadata-tags-label"
+                  className="flex flex-wrap gap-3"
+                >
                   {availableTags.map((tag) => {
                     const active = selectedTags.includes(tag);
                     return (
@@ -198,17 +215,21 @@ export default function PublishAsset() {
 
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/10 bg-background/85 backdrop-blur-2xl">
         <div className="page-shell flex items-center justify-between gap-4 py-4">
-          <button className="focus-ring inline-flex items-center gap-2 rounded-full border border-outline-variant/25 px-4 py-3 text-sm text-on-surface-variant transition-colors hover:border-accent/25 hover:text-primary">
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          {/* Was a button with no handler: the way out of the flow has to
+              actually go somewhere. */}
+          <Link
+            href="/dashboard"
+            className="focus-ring inline-flex min-h-[44px] items-center gap-2 rounded-full border border-outline-variant/25 px-4 py-3 text-sm text-on-surface-variant transition-colors hover:border-accent/25 hover:text-primary"
+          >
             Cancel
-          </button>
+          </Link>
 
           <button
             onClick={handleCreate}
             className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95"
           >
             {status === "creating" ? "Creating..." : selectedType && assetName.trim() ? "Create asset" : "Continue"}
-            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
       </footer>

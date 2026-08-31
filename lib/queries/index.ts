@@ -5,6 +5,7 @@ export {
   useTrending,
   useCategories,
   useSearchAssets,
+  useMarketCatalog,
 } from './useMarketplace';
 export { useDashboardMetrics, useTopAssets, useActivityLogs } from './useDashboard';
 export { useAssetTypes, useTags, useAsset, useCreateAsset } from './useAssets';
