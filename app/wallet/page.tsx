@@ -28,8 +28,9 @@ export default function WalletPage() {
     ? describeNetwork(session.wallet.networkPassphrase)
     : null;
 
-  const balance = useWalletBalance(address);
-  const transactions = useWalletTransactions(address);
+  const authenticated = session.status === 'authenticated';
+  const balance = useWalletBalance(authenticated);
+  const transactions = useWalletTransactions(undefined, undefined, authenticated);
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -69,7 +70,7 @@ export default function WalletPage() {
             }
           />
         ) : (
-          <div className="space-y-8">
+          <>
             <GlassCard className="p-6" hover={false}>
               <h2 className="font-heading text-xl font-semibold text-primary">Connected account</h2>
               <p className="mt-3 break-all font-label text-sm text-on-surface">{address}</p>
@@ -78,6 +79,27 @@ export default function WalletPage() {
               ) : null}
             </GlassCard>
 
+            {!authenticated ? (
+              <Callout
+                tone="warning"
+                title="Sign in to read this wallet"
+                actions={
+                  <button
+                    type="button"
+                    className="market-button-primary"
+                    onClick={() => void session.signIn()}
+                  >
+                    Sign in with Freighter
+                  </button>
+                }
+              >
+                <p>
+                  A connected address is not enough to access balances or transactions. Sign the
+                  marketplace challenge so the backend can scope these reads to your wallet.
+                </p>
+              </Callout>
+            ) : (
+            <div className="space-y-8">
             <section aria-labelledby="balance-heading" className="space-y-4">
               <h2 id="balance-heading" className="section-title text-2xl">
                 Balance
@@ -99,15 +121,25 @@ export default function WalletPage() {
                         Credits
                       </dt>
                       <dd className="mt-2 text-3xl font-semibold text-primary">
-                        {balance.data.credits.toLocaleString()}
+                        {balance.data.credits === null
+                          ? 'Unavailable'
+                          : balance.data.credits.toLocaleString()}
                       </dd>
+                      {balance.data.credits === null ? (
+                        <p className="mt-2 text-sm text-warning">
+                          Historical credits are quarantined until their settlement provenance is
+                          verified.
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <dt className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
                         XLM
                       </dt>
                       <dd className="mt-2 text-3xl font-semibold text-secondary">
-                        {balance.data.xlmBalance.toLocaleString()}
+                        {balance.data.onChain.xlmBalance === null
+                          ? 'Unavailable'
+                          : balance.data.onChain.xlmBalance.toLocaleString()}
                       </dd>
                     </div>
                     <div>
@@ -156,7 +188,9 @@ export default function WalletPage() {
                 removed rather than left as a dead end.
               </p>
             </Callout>
-          </div>
+            </div>
+            )}
+          </>
         )}
       </main>
 
@@ -175,7 +209,7 @@ function TransactionList({
   return (
     <ul className="grid gap-3">
       {transactions.map((transaction) => {
-        const receipt = explorerTransactionUrl(transaction.txid, networkPassphrase);
+        const receipt = explorerTransactionUrl(transaction.ledgerReference, networkPassphrase);
         return (
           <li key={transaction.id}>
             <GlassCard className="p-4" hover={false}>
@@ -186,7 +220,7 @@ function TransactionList({
                   </span>
                   <p className="mt-2 text-primary">{transaction.description}</p>
                   <p className="mt-1 break-all font-label text-xs text-on-surface-variant">
-                    {transaction.txid}
+                    {transaction.ledgerReference ?? 'No verified ledger reference'}
                   </p>
                   {receipt ? (
                     <a

@@ -324,12 +324,19 @@ export function searchAssets(search?: string, type?: string, skip?: number, take
 
 // ── Wallet ──
 export interface WalletBalance {
-  credits: number;
-  xlmBalance: number;
+  credits: number | null;
+  creditStatus: 'QUARANTINED';
+  creditReason: string;
   monthlyUsage: number;
   monthlyAllocation: number;
   usagePercent: number;
-  xlmUsdEstimate: number;
+  onChain: {
+    status: 'UNAVAILABLE';
+    reason: string;
+    xlmBalance: number | null;
+    xlmUsdEstimate: number | null;
+    asOf: string | null;
+  };
 }
 
 export interface CreditPackage {
@@ -343,43 +350,46 @@ export interface CreditPackage {
   originalPrice: number | null;
   features: string[] | null;
   popular: boolean;
+  purchasable: boolean;
 }
 
 export interface WalletTransaction {
   id: string;
   type: string;
   description: string;
-  txid: string;
+  ledgerReference: string | null;
   amount: number;
   currency: string;
   createdAt: string;
 }
 
-export interface PurchaseResult {
-  transaction: WalletTransaction;
-  credits: number;
-  message: string;
+export interface CreditPackagesResponse {
+  purchase: {
+    supported: false;
+    reason: string;
+    message: string;
+  };
+  packages: CreditPackage[];
 }
 
-export function fetchWalletBalance(user?: string) {
-  return request<WalletBalance>('/api/wallet/balance', { params: { user } });
+export function fetchWalletBalance() {
+  return request<WalletBalance>('/api/wallet/balance');
 }
 
 export function fetchCreditPackages() {
-  return request<CreditPackage[]>('/api/wallet/packages');
+  return request<CreditPackagesResponse>('/api/wallet/packages');
 }
 
-export function fetchWalletTransactions(user?: string, limit?: number, skip?: number) {
+export function fetchWalletTransactions(limit?: number, skip?: number) {
   return request<WalletTransaction[]>('/api/wallet/transactions', {
-    params: { user, limit, skip },
+    params: { limit, skip },
   });
 }
 
-export function purchasePackage(packageId: string, user?: string) {
-  return request<PurchaseResult>('/api/wallet/purchase', {
+export function purchasePackage(packageId: string) {
+  return request<never>('/api/wallet/purchase', {
     method: 'POST',
     body: JSON.stringify({ packageId }),
-    params: { user },
   });
 }
 

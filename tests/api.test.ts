@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
   createPurchaseIntent,
+  fetchWalletBalance,
+  fetchWalletTransactions,
   getAuthToken,
   getAuthUser,
   verifyWalletAuth,
@@ -57,5 +59,32 @@ describe('API client', () => {
     window.sessionStorage.setItem('agentverse.auth.user', JSON.stringify({ publicKey: 'GABC' }));
     expect(getAuthToken()).toBeUndefined();
     expect(getAuthUser()).toBeTruthy();
+  });
+
+  it('uses the authenticated wallet contract without sending a user selector', async () => {
+    window.sessionStorage.setItem('agentverse.auth.token', 'token-123');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(new Response(JSON.stringify({ data: {} }), { status: 200 })),
+      ),
+    );
+
+    await fetchWalletBalance();
+    await fetchWalletTransactions(20, 5);
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/wallet/balance',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/wallet/transactions?limit=20&skip=5',
+      expect.anything(),
+    );
+    expect(String((fetch as ReturnType<typeof vi.fn>).mock.calls[1][0])).not.toContain('user=');
   });
 });

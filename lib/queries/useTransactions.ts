@@ -3,21 +3,22 @@ import {
   fetchWalletTransactions,
   purchasePackage,
   type WalletTransaction,
-  type PurchaseResult,
 } from '@/lib/api';
 
-export function useWalletTransactions(user?: string, limit?: number, skip?: number) {
+export function useWalletTransactions(limit?: number, skip?: number, enabled = true) {
   return useQuery<WalletTransaction[]>({
-    queryKey: ['wallet', 'transactions', { user, limit, skip }],
-    queryFn: () => fetchWalletTransactions(user, limit, skip),
+    queryKey: ['wallet', 'transactions', { limit, skip }],
+    queryFn: () => fetchWalletTransactions(limit, skip),
+    enabled,
+    retry: false,
   });
 }
 
 export function usePurchasePackage() {
   const queryClient = useQueryClient();
 
-  return useMutation<PurchaseResult, Error, { packageId: string; user?: string }>({
-    mutationFn: ({ packageId, user }) => purchasePackage(packageId, user),
+  return useMutation<never, Error, { packageId: string }>({
+    mutationFn: ({ packageId }) => purchasePackage(packageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
     },

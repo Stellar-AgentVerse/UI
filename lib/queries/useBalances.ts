@@ -3,18 +3,20 @@ import {
   fetchWalletBalance,
   fetchCreditPackages,
   type WalletBalance,
-  type CreditPackage,
+  type CreditPackagesResponse,
 } from '@/lib/api';
 
-export function useWalletBalance(user?: string) {
+export function useWalletBalance(enabled = true) {
   return useQuery<WalletBalance>({
-    queryKey: ['wallet', 'balance', { user }],
-    queryFn: () => fetchWalletBalance(user),
+    queryKey: ['wallet', 'balance'],
+    queryFn: fetchWalletBalance,
+    enabled,
+    retry: false,
   });
 }
 
 export function useCreditPackages() {
-  return useQuery<CreditPackage[]>({
+  return useQuery<CreditPackagesResponse>({
     queryKey: ['wallet', 'packages'],
     queryFn: fetchCreditPackages,
   });
