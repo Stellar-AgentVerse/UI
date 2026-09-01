@@ -178,7 +178,8 @@ journey cannot be completed end to end on Testnet until they are closed.
 
 ## Not addressed here
 
-- **Test runner and CI** belong to UI #7, which has an open pull request.
+- **Test runner and CI** belong to UI #7, whose pull request is now merged:
+  `npm test`, `npm run test:e2e` and the CI workflow live on `main`.
   `lib/market/purchase-state.ts` is deliberately pure and fully exported so that
   suite can cover it.
 - **Full session lifecycle** — route protection, live account and network
