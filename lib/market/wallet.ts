@@ -103,10 +103,11 @@ async function readNetwork(): Promise<{ network: string; networkPassphrase: stri
 /**
  * How the wallet interpreted the message it signed.
  *
- * `legacy` is a raw Ed25519 signature over the challenge bytes. `sep53` is
- * SHA-256 over "Stellar Signed Message:\n" + challenge, per SEP-53, which is
- * what current Freighter builds produce. The backend accepts both schemes;
- * knowing which one we got still helps diagnose a rejected session.
+ * `legacy` is a raw Ed25519 signature over the challenge bytes, which is the
+ * only scheme `AuthService.verifyWallet` accepts today. `sep53` is SHA-256 over
+ * "Stellar Signed Message:\n" + challenge, per SEP-53, which is what current
+ * Freighter builds produce. Knowing which one we got turns an opaque
+ * "Invalid signature" into a diagnosis.
  */
 export type SignatureScheme = 'legacy' | 'sep53' | 'unknown';
 
@@ -255,13 +256,17 @@ function detectScheme(
 /**
  * Explain a rejected sign-in when we can see why.
  *
- * The backend accepts both raw Ed25519 and SEP-53 signatures. If a known
- * SEP-53 signature is still rejected, the likely problem is an account or
- * challenge mismatch rather than an unsupported signing scheme.
+ * `AuthService.verifyWallet` verifies a raw Ed25519 signature over the challenge
+ * bytes and nothing else. A wallet that follows SEP-53 signs a hash of a
+ * prefixed message instead, so its signature cannot verify there and no
+ * client-side transform can bridge a hash preimage. That is a contract gap
+ * between the two repositories, not something the buyer did wrong, and telling
+ * them to re-check their account would send them after a fault that is not
+ * theirs.
  */
 export function explainRejectedSignature(scheme: SignatureScheme): string | null {
   if (scheme === 'sep53') {
-    return 'Freighter signed the challenge using SEP-53, which the marketplace supports. The server still rejected the session; check that Freighter is on the same account and retry so a fresh challenge is used.';
+    return 'Freighter signed the challenge using SEP-53 (SHA-256 over the message with a "Stellar Signed Message:" prefix). The marketplace verifies a raw signature over the challenge itself, so it cannot accept this signature. Retrying will not help: this is a server-side gap tracked in Backend #9, not a problem with your wallet or your account.';
   }
   if (scheme === 'unknown') {
     return 'The signature could not be matched to the challenge locally, so the marketplace could not verify it either. Check that Freighter is on the same account you signed in with.';
