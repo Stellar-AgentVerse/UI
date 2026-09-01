@@ -52,17 +52,10 @@ marketplace, assets, wallet, purchases, payments, and wallet authentication.
 There is no REST controller for token operations, payment history, or
 traditional login/register in the current backend.
 
-## Verification
+## Market V1
 
-Run the application checks with:
-
-```bash
-npm run lint
-npm run type-check
-npm test
-npm run test:e2e
-```
-
-Unit and browser tests use mocked API responses and deterministic fixtures, so
-they do not require Freighter or a live Testnet account. Real wallet/Testnet
-evidence is kept in the manually triggered staging smoke workflow.
+The marketplace, asset detail and wallet pages implement the Market V1 prompt
+purchase and delivery journey. `docs/market-v1.md` documents the scope, the
+purchase state machine, why a retry cannot become a second purchase, the
+reconciliation references, the environment variables, and the backend
+dependencies that are still open.

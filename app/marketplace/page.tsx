@@ -1,276 +1,196 @@
 'use client';
 
-import { useMemo, useState } from "react";
-import Footer from "@/components/agentverse/Footer";
-import GlassCard from "@/components/agentverse/GlassCard";
-import NavBar from "@/components/agentverse/NavBar";
-import type { Category, MarketplaceItem } from "@/lib/api";
-import { useCategories, useFeatured, useSearchAssets, useTrending } from "@/lib/queries";
+import { useEffect, useMemo, useState } from 'react';
+import Footer from '@/components/agentverse/Footer';
+import NavBar from '@/components/agentverse/NavBar';
+import { WalletBar } from '@/components/market/WalletBar';
+import { PromptCard } from '@/components/market/PromptCard';
+import {
+  CardSkeleton,
+  Callout,
+  EmptyState,
+  ErrorState,
+} from '@/components/market/primitives';
+import { SearchIcon } from '@/components/market/icons';
+import { toServerFailure } from '@/lib/api';
+import { MARKET_V1_SCOPE_NOTE } from '@/lib/market/scope';
+import { useMarketCatalog } from '@/lib/queries';
 
-const fallbackFeatured: MarketplaceItem[] = [
-  {
-    id: "featured-1",
-    title: "Nova-7 Strategist",
-    slug: "nova-7-strategist",
-    category: "Featured Agent",
-    creator: "NeuralLabs",
-    creatorPublicKey: "GAAA…",
-    rating: "4.9",
-    price: "25 Credits",
-    priceValue: 25,
-    currency: "CR",
-    tag: "AGENT",
-    gradient: "from-accent/10 to-transparent",
-    description: "AI strategy agent for market analysis.",
-    imageUrl: "",
-    executions: 1420,
-  },
-  {
-    id: "featured-2",
-    title: "CryptoPulse Flow",
-    slug: "cryptopulse-flow",
-    category: "Top Workflow",
-    creator: "QuantCore",
-    creatorPublicKey: "GBBB…",
-    rating: "4.7",
-    price: "50 Credits",
-    priceValue: 50,
-    currency: "CR",
-    tag: "WORKFLOW",
-    gradient: "from-accent/10 to-transparent",
-    description: "Automated crypto trading workflow.",
-    imageUrl: "",
-    executions: 980,
-  },
-  {
-    id: "featured-3",
-    title: "EcoTrend Ledger",
-    slug: "ecotrend-ledger",
-    category: "New Dataset",
-    creator: "GaiaSystems",
-    creatorPublicKey: "GCCC…",
-    rating: "5.0",
-    price: "12 Credits",
-    priceValue: 12,
-    currency: "CR",
-    tag: "DATASET",
-    gradient: "from-accent/10 to-transparent",
-    description: "Environmental trend dataset.",
-    imageUrl: "",
-    executions: 2340,
-  },
-];
-
-const fallbackTrending: MarketplaceItem[] = [
-  { title: "CodeArchitect v2", creator: "DevMaster", rating: "4.8", price: "320 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 320, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-  { title: "LegalScryer Data", creator: "JurisData", rating: "4.9", price: "1,800 CR", tag: "DATASET", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 1800, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-  { title: "Visionary Prompt", creator: "PixelMind", rating: "4.7", price: "85 CR", tag: "PROMPT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 85, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-  { title: "Salesforce Automata", creator: "OmniZense", rating: "4.6", price: "560 CR", tag: "WORKFLOW", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 560, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-  { title: "MarketPulse AI", creator: "FinTech.ai", rating: "4.7", price: "30 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 30, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-  { title: "OmniVision Agent", creator: "Visionary", rating: "4.9", price: "45 CR", tag: "AGENT", id: "", slug: "", category: "", creatorPublicKey: "", priceValue: 45, currency: "CR", gradient: "", description: "", imageUrl: "", executions: 0 },
-];
-
-const categoryDefs: Category[] = [
-  { label: "Agents", icon: "smart_toy", type: "AGENT" },
-  { label: "Prompts", icon: "terminal", type: "PROMPT" },
-  { label: "Datasets", icon: "database", type: "DATASET" },
-  { label: "Workflows", icon: "account_tree", type: "WORKFLOW" },
-];
-
-function assetIcon(tag: string) {
-  if (tag === "AGENT") return "smart_toy";
-  if (tag === "WORKFLOW") return "account_tree";
-  if (tag === "PROMPT") return "terminal";
-  return "database";
-}
-
-function MarketplaceCard({ item, featured = false }: { item: MarketplaceItem; featured?: boolean }) {
-  return (
-    <GlassCard className={`overflow-hidden ${featured ? "min-w-[320px] md:min-w-[420px]" : "h-full"}`}>
-      <div className={`relative flex ${featured ? "h-[17rem]" : "h-52"} items-center justify-center overflow-hidden bg-gradient-to-br from-surface-container-low to-surface-container-high`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(95,251,241,0.18),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent)]" />
-        <span className="material-symbols-outlined relative z-10 text-7xl text-white/10">
-          {assetIcon(item.tag)}
-        </span>
-        <div className="absolute right-4 top-4 rounded-full border border-accent/20 bg-background/75 px-3 py-1 text-xs font-medium tracking-[0.18em] text-accent backdrop-blur-md">
-          {item.category || item.tag}
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col p-5">
-        <div className="mb-3 flex items-start justify-between gap-4">
-          <div>
-            <h3 className={`${featured ? "text-2xl" : "text-xl"} font-heading font-semibold text-primary`}>{item.title}</h3>
-            <p className="mt-1 text-sm text-on-surface-variant">by {item.creator}</p>
-          </div>
-          <div className="flex items-center gap-1 text-accent">
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            <span className="text-sm font-medium">{item.rating}</span>
-          </div>
-        </div>
-        <p className="mb-4 min-h-[3rem] text-sm leading-relaxed text-on-surface-variant">{item.description || "Premium asset for high-signal workflows."}</p>
-        <div className="mt-auto flex items-center justify-between border-t border-outline-variant/15 pt-4">
-          <div>
-            <div className="text-label-sm uppercase tracking-[0.18em] text-on-surface-variant">Price</div>
-            <div className="text-lg font-semibold text-primary">{item.price}</div>
-          </div>
-          <button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
-            Execute
-          </button>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
+const PAGE_SIZE = 12;
 
 export default function MarketplacePage() {
-  const [activeCategory, setActiveCategory] = useState("Agents");
-  const [searchTerm, setSearchTerm] = useState("");
-  const featuredQuery = useFeatured();
-  const trendingQuery = useTrending();
-  const categoriesQuery = useCategories();
-  const categories = useMemo(
-    () => (categoriesQuery.data ?? (categoriesQuery.isError ? [] : categoryDefs))
-      .map((category) => ({ ...category, active: category.label === activeCategory })),
-    [categoriesQuery.data, categoriesQuery.isError, activeCategory],
-  );
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
 
-  const activeType = useMemo(
-    () => categories.find((category) => category.label === activeCategory)?.type,
-    [activeCategory, categories],
-  );
+  // Debounce so a query is not issued for every keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
-  const searchQuery = useSearchAssets(searchTerm, activeType);
-  const featuredItems = featuredQuery.data ?? (featuredQuery.isError ? [] : fallbackFeatured);
-  const trendingItems = useMemo(
-    () => searchTerm.length > 2
-      ? (searchQuery.data?.items ?? [])
-      : (trendingQuery.data ?? (trendingQuery.isError ? [] : fallbackTrending)),
-    [searchTerm, searchQuery.data, trendingQuery.data, trendingQuery.isError],
-  );
+  const catalog = useMarketCatalog({
+    search,
+    skip: page * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-  };
+  const items = catalog.data?.items ?? [];
+  const total = catalog.data?.total ?? 0;
+  const lastPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
 
-  const filteredTrending = useMemo(() => {
-    if (!activeType) return trendingItems;
-    return trendingItems.filter((item) => item.tag === activeType);
-  }, [activeType, trendingItems]);
+  const rangeLabel = useMemo(() => {
+    if (!total) return '';
+    const first = page * PAGE_SIZE + 1;
+    const last = Math.min(total, page * PAGE_SIZE + items.length);
+    return `Showing ${first}–${last} of ${total} prompt${total === 1 ? '' : 's'}`;
+  }, [items.length, page, total]);
 
   return (
     <div className="min-h-screen overflow-x-hidden">
       <NavBar
         links={[
-          { label: "Marketplace", href: "/marketplace", active: true },
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Wallet", href: "/wallet" },
+          { label: 'Marketplace', href: '/marketplace', active: true },
+          { label: 'Wallet', href: '/wallet' },
+          { label: 'Dashboard', href: '/dashboard' },
         ]}
-        rightContent={
-          <button className="focus-ring rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-90 active:scale-95">
-            Launch App
-          </button>
-        }
+        rightContent={<WalletBar />}
       />
 
-      <div className="fixed inset-0 -z-10 pointer-events-none">
+      <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute left-[5%] top-[12%] h-[24rem] w-[24rem] rounded-full bg-accent/8 blur-[120px]" />
         <div className="absolute right-[7%] top-[22%] h-[18rem] w-[18rem] rounded-full bg-secondary/10 blur-[120px]" />
       </div>
 
       <main className="page-shell pt-28 pb-24">
-        {(featuredQuery.isError || trendingQuery.isError || categoriesQuery.isError || searchQuery.isError) && <p role="alert" className="mb-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Unable to load marketplace data.</p>}
-        <section className="mb-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <div className="space-y-4">
-            <p className="section-kicker">Marketplace</p>
-            <h1 className="section-title text-4xl md:text-6xl">Discover premium AI assets</h1>
-            <p className="section-copy max-w-2xl">
-              Browse agents, prompts, datasets, and workflows with a cleaner hierarchy, tighter spacing, and product-grade presentation.
-            </p>
-          </div>
-          <GlassCard className="p-5">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <div className="text-2xl font-semibold text-primary">{featuredItems.length}</div>
-                <div className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">Featured</div>
-              </div>
-              <div>
-                <div className="text-2xl font-semibold text-primary">{trendingItems.length}</div>
-                <div className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">Trending</div>
-              </div>
-              <div>
-                <div className="text-2xl font-semibold text-primary">24/7</div>
-                <div className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">Live</div>
-              </div>
-            </div>
-          </GlassCard>
-        </section>
+        <header className="mb-8 max-w-3xl space-y-4">
+          <p className="section-kicker">Marketplace</p>
+          <h1 className="section-title text-4xl md:text-5xl">Curated prompts</h1>
+          <p className="section-copy">
+            {MARKET_V1_SCOPE_NOTE} Every prompt below comes from the marketplace
+            catalog; nothing on this page is sample data.
+          </p>
+        </header>
 
-        <section className="mb-10 space-y-4">
+        <section aria-labelledby="catalog-heading" className="space-y-6">
+          <h2 id="catalog-heading" className="sr-only">
+            Prompt catalog
+          </h2>
+
           <div className="relative">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline">
-              <span className="material-symbols-outlined">search</span>
+              <SearchIcon className="h-5 w-5" />
             </span>
+            <label className="sr-only" htmlFor="catalog-search">
+              Search prompts by name or description
+            </label>
             <input
+              id="catalog-search"
               className="input-surface pl-12"
-              placeholder="Search agents, prompts, workflows, or datasets"
-              type="text"
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search prompts"
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {categories.map((category) => (
+          <p aria-live="polite" className="min-h-[1.5rem] text-sm text-on-surface-variant">
+            {catalog.isPending
+              ? 'Loading the prompt catalog…'
+              : catalog.isError
+                ? ''
+                : total > 0
+                  ? rangeLabel
+                  : ''}
+          </p>
+
+          {catalog.isPending ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, index) => (
+                <CardSkeleton key={index} />
+              ))}
+            </div>
+          ) : catalog.isError ? (
+            <ErrorState
+              title="The prompt catalog could not be loaded"
+              message={`${toServerFailure(catalog.error).message} No sample data is shown in its place, so this page is empty until the marketplace answers.`}
+              requestId={toServerFailure(catalog.error).requestId}
+              onRetry={() => catalog.refetch()}
+              retryLabel="Reload the catalog"
+            />
+          ) : items.length === 0 ? (
+            <EmptyState
+              title={search ? 'No prompts match that search' : 'No prompts are published yet'}
+              description={
+                search
+                  ? 'Try a different term, or clear the search to see the whole catalog.'
+                  : 'The marketplace answered successfully and returned an empty catalog. Published prompts will appear here as soon as they exist.'
+              }
+              action={
+                search ? (
+                  <button
+                    type="button"
+                    className="market-button-secondary"
+                    onClick={() => setSearchInput('')}
+                  >
+                    Clear search
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((item) => (
+                <li key={item.id} className="h-full">
+                  <PromptCard item={item} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {total > PAGE_SIZE ? (
+            <nav
+              aria-label="Catalog pages"
+              className="flex items-center justify-between gap-4 pt-2"
+            >
               <button
-                key={category.label}
-                onClick={() => setActiveCategory(category.label)}
-                className={`focus-ring inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                  category.active
-                    ? "border-accent/30 bg-accent/10 text-accent"
-                    : "border-outline-variant/20 text-on-surface-variant hover:border-accent/25 hover:text-primary"
-                }`}
+                type="button"
+                className="market-button-secondary"
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+                disabled={page === 0 || catalog.isFetching}
               >
-                <span className="material-symbols-outlined text-[18px]">{category.icon}</span>
-                {category.label}
+                Previous
               </button>
-            ))}
-          </div>
+              <span className="text-sm text-on-surface-variant">
+                Page {page + 1} of {lastPage + 1}
+              </span>
+              <button
+                type="button"
+                className="market-button-secondary"
+                onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
+                disabled={page >= lastPage || catalog.isFetching}
+              >
+                Next
+              </button>
+            </nav>
+          ) : null}
         </section>
 
-        <section className="mb-10">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="section-kicker mb-2">Featured</p>
-              <h2 className="section-title text-2xl md:text-3xl">Editor’s picks</h2>
-            </div>
-            <a className="text-sm font-medium text-accent hover:underline" href="#">
-              View all
-            </a>
-          </div>
-
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {featuredItems.map((item) => (
-              <div key={item.id || item.title} className="shrink-0">
-                <MarketplaceCard item={item} featured />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="section-kicker mb-2">Trending</p>
-              <h2 className="section-title text-2xl md:text-3xl">High-signal assets</h2>
-            </div>
-            <span className="text-sm text-on-surface-variant">Showing {filteredTrending.length} results</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTrending.map((item) => (
-              <MarketplaceCard key={item.id || item.title} item={item} />
-            ))}
-          </div>
+        <section aria-labelledby="scope-heading" className="mt-12 max-w-3xl">
+          <h2 id="scope-heading" className="sr-only">
+            What Market V1 does not sell yet
+          </h2>
+          <Callout tone="idle" title="Only prompts are for sale in Market V1">
+            <p>
+              Agents, datasets, workflows, models, oracles and credit packages are
+              not purchasable yet, so they are not listed here and cannot be bought
+              anywhere in the app. They will return once the delivery path for each
+              of them is real.
+            </p>
+          </Callout>
         </section>
       </main>
 
